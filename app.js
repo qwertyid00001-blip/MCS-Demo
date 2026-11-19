@@ -45,7 +45,7 @@
   const wa = t => `https://wa.me/${waNum()}?text=${encodeURIComponent(t)}`;
 
   /* ====== Identitas (nama, logo) dan tema warna ====== */
-  const DEFAULT_NAME = 'Focus Survey Solution', DEFAULT_SHORT = 'FSS', DEF_C1 = '#0a2e2f', DEF_C2 = '#ff8a00';
+  const DEFAULT_NAME = 'Multidaya Cipta Solusi', DEFAULT_SHORT = 'MCS', DEF_C1 = '#0a2e2f', DEF_C2 = '#ff8a00';
   const PRESETS = [
     ['Biru Logo & Merah (MCS)', '#344e69', '#e63946'],
     ['Biru Logo & Merah Terang', '#243b53', '#ff3b3b'],
@@ -132,10 +132,10 @@
       hb.innerHTML = logoHtml(s, 38, false) + (hide ? '' : '<span>' + esc(nameOf(s)) + '</span>');
       hb.setAttribute('aria-label', nameOf(s) + ', ke beranda');
     }
-    let fav = document.getElementById('fss-fav');
-    const lg = s && s.logo && (s.logo.s || '');
-    if (lg){ if (!fav){ fav = document.createElement('link'); fav.id = 'fss-fav'; fav.rel = 'icon'; document.head.appendChild(fav); } fav.href = lg; }
-    else if (fav) fav.remove();
+    const tc = document.querySelector('meta[name="theme-color"]');
+    if (tc && s && s.color1) tc.setAttribute('content', s.color1);
+    const ti = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (ti) ti.setAttribute('content', (s && s.short) || DEFAULT_SHORT);
   }
   const applyAll = s => { s = s || SETTINGS; applyTheme(s); applyBrand(s); };
 
