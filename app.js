@@ -1933,8 +1933,13 @@
   }
 
   const go = d => { const { key } = parse(); const i = PAGES.findIndex(p => p[0] === key); if (i < 0) { location.hash = '#/'; return; } location.hash = hrefOf(PAGES[(i + d + PAGES.length) % PAGES.length][0]); };
-  const drawer = document.getElementById('drawer'), burger = document.getElementById('burger');
-  function closeDrawer(){ drawer.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }
+  const drawer = document.getElementById('drawer'), burger = document.getElementById('burger'), menuWrap = burger.closest('.menu-wrap');
+  function openDrawer(){ drawer.classList.add('open'); burger.setAttribute('aria-expanded', 'true'); burger.innerHTML = ic('close', 22); }
+  function closeDrawer(){ drawer.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); burger.innerHTML = ic('menu', 22); }
+  if (menuWrap){
+    menuWrap.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') openDrawer(); });
+    menuWrap.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') closeDrawer(); });
+  }
 
   /* ====== Animasi: pembuka, pindah halaman, masuk admin ====== */
   const REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -2073,7 +2078,7 @@
     if (!e.target.closest('.menu-wrap') && drawer.classList.contains('open')) closeDrawer();
     if (!t) return;
     const a = t.dataset.act;
-    if (a === 'menu'){ const o = drawer.classList.toggle('open'); burger.setAttribute('aria-expanded', String(o)); }
+    if (a === 'menu'){ if (drawer.classList.contains('open')) closeDrawer(); else openDrawer(); }
     if (a === 'flow'){
       flow = t.dataset.v;
       document.getElementById('steps').innerHTML = steps();

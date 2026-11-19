@@ -56,8 +56,12 @@ button{font:inherit;color:inherit}
 .btn.on-deep.ghost:hover{background:rgba(255,255,255,.1)}
 .btn.sm{padding:10px 18px;font-size:14px}
 .menu-wrap{position:relative;margin-left:auto;display:none}
-.burger{display:grid;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);cursor:pointer;place-items:center;transition:background .2s,border-color .2s,color .2s}
-.menu-wrap:hover .burger,.burger[aria-expanded="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.burger{display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;margin:0;line-height:0;border-radius:50%;border:1px solid var(--line);background:var(--surface);cursor:pointer;transition:background .2s,border-color .2s,color .2s;-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent}
+.burger svg,.round svg{display:block;margin:auto;flex:none}
+.burger[aria-expanded="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+@media (hover:hover) and (pointer:fine){
+  .menu-wrap:hover .burger{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+}
 .nav a{overflow:hidden;isolation:isolate}
 .nav a::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:999px;background:var(--accent);opacity:0;transition:opacity .5s ease}
 .nav a:active::before{opacity:1}
@@ -86,10 +90,10 @@ button{font:inherit;color:inherit}
 .drawer{position:absolute;top:calc(100% + 10px);right:0;z-index:50;min-width:230px;display:flex;flex-direction:column;text-align:left;color:var(--text);
   background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:8px;
   box-shadow:0 20px 44px -12px rgba(0,0,0,.45);
-  visibility:hidden;opacity:0;transform:translateY(-8px) scale(.97);transform-origin:top right;
+  visibility:hidden;opacity:0;pointer-events:none;transform:translateY(-8px) scale(.97);transform-origin:top right;
   transition:opacity .22s ease,transform .22s ease,visibility 0s linear .22s}
 .drawer::before{content:"";position:absolute;top:-14px;left:0;right:0;height:14px}
-.drawer.open,.menu-wrap:hover .drawer,.menu-wrap:focus-within .drawer{visibility:visible;opacity:1;transform:none;transition:opacity .22s ease,transform .22s ease}
+.drawer.open{visibility:visible;opacity:1;pointer-events:auto;transform:none;transition:opacity .22s ease,transform .22s ease}
 .drawer .d-head{display:none}
 .drawer #dlinks{width:100%;align-items:stretch;gap:4px}
 .d-link{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:12px;font-family:var(--ff-body);font-weight:600;font-size:15px;line-height:1.3;text-decoration:none;color:var(--text);border:1px solid transparent;transition:color .2s ease,background .2s ease,border-color .2s ease;-webkit-tap-highlight-color:transparent}
@@ -204,7 +208,7 @@ main{flex:1;min-height:0;overflow-y:auto;padding:0 clamp(16px,4vw,48px);outline:
 .t-left h2{font-size:clamp(30px,min(4vw,6.4vh),52px);font-weight:700}
 .t-left p{color:var(--muted);max-width:40ch}
 .ctrl{display:flex;align-items:center;gap:10px}
-.round{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer;transition:background .2s}
+.round{width:46px;height:46px;padding:0;margin:0;line-height:0;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s;-webkit-appearance:none;appearance:none}
 .round:hover{background:var(--deep);color:#fff}
 .dots{display:flex;gap:6px;margin-left:8px}
 .dots i{width:22px;height:4px;border-radius:4px;background:var(--line);transition:background .2s,width .2s}
@@ -614,7 +618,8 @@ body.is-admin .pager{display:none}
 /* ---------- Responsive ---------- */
 @media (max-width:1500px){
   .nav,.top > .btn,.adm{display:none}
-  .menu-wrap,.burger{display:grid}
+  .menu-wrap{display:block}
+  .burger{display:flex}
 }
 @media (max-width:1000px){
   .pgrid{grid-template-columns:repeat(2,1fr)}
@@ -634,7 +639,8 @@ body.is-admin .pager{display:none}
 }
 @media (max-width:900px){
   .nav,.top > .btn{display:none}
-  .menu-wrap,.burger{display:grid}
+  .menu-wrap{display:block}
+  .burger{display:flex}
   .hero,.detail,.adv,.testi,.contact{grid-template-columns:1fr}
   .ledger{grid-template-columns:1fr}
   .page{justify-content:flex-start;padding-top:4px}
