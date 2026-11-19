@@ -1,0 +1,20 @@
+{
+  "name": "focus-survey-solution",
+  "version": "1.0.0",
+  "description": "Backend dan Web Focus Survey Solution",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "survey",
+    "calibration",
+    "backend"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
