@@ -232,10 +232,16 @@
       s:'Pengukuran presisi untuk stopwatch, timer, dan frequency counter.',
       l:'Pengukuran waktu dan frekuensi menjadi dasar banyak pengujian. Kami mengkalibrasi alat ukur waktu dengan standar yang tertelusur.',
       items:['Stopwatch','Timer','Frequency counter'] },
-    { id:'pengadaan', t:'Pengadaan Instrument, Alat Teknik, Dll', icon:'box',
-      s:'Siap Melayani seluruh pengadaan kebutuhan Industri anda.',
-      l:'Siap Melayani seluruh pengadaan kebutuhan Industri anda, meliputi berbagai instrumen ukur, alat teknik, dan perlengkapan industri lainnya.',
-      items:['Instrument ukur & uji','Alat teknik & perkakas','Kebutuhan industri lainnya'] }
+    { id:'pengadaan', t:'Procurement MCS', icon:'box',
+      s:'1. Instrument Laboratory · 2. Alat Teknik · 3. Mesin Pendingin · 4. Kebutuhan Industri lainnya.',
+      l:'Siap melayani seluruh pengadaan kebutuhan industri Anda, mulai dari instrumen laboratorium, alat teknik, mesin pendingin (Chiller, Showcase, Freezer, Coolroom), hingga berbagai kebutuhan industri lainnya.',
+      items:['1. Instrument Laboratory','2. Alat Teknik','3. Mesin Pendingin ( Chiller, Showcase, Freezer, Coolroom)','4. Kebutuhan Industri lainnya.'],
+      benefits:['Produk berkualitas sesuai spesifikasi industri','Garansi resmi & dukungan teknis','Pengiriman tepat waktu ke seluruh Indonesia'] },
+    { id:'safety', t:'Safety MCS — Keselamatan Kerja (K3)', icon:'shield',
+      s:'1. Pengadaan & Refill Apar · 2. Hydrostatic Test SCBA dan EEBA · 3. Pelatihan K3 · 4. Kebutuhan K3.',
+      l:'Melayani seluruh kebutuhan Keselamatan dan Kesehatan Kerja (K3) perusahaan Anda, meliputi pengadaan & isi ulang APAR, pengujian hidrostatik SCBA/EEBA, hingga pelatihan keselamatan kerja.',
+      items:['1. Pengadaan & Refill Apar','2. Hydrostatic Test SCBA dan EEBA','3. Pelatihan Keselamatan Kerja','4. Melayani seluruh kebutuhan K3'],
+      benefits:['Sesuai standar keselamatan kerja (K3)','Ditangani teknisi & instruktur berpengalaman','Melayani kebutuhan K3 industri di seluruh Indonesia'] }
   ];
 
   const ADV = [
@@ -323,7 +329,7 @@
   }
   if (!hasBackendApi) {
     try {
-      const localDemo = localStorage.getItem('fss_demo_data');
+      const localDemo = localStorage.getItem('fss_demo_data_v5');
       if (localDemo) DATA = Object.assign({}, DATA, JSON.parse(localDemo));
     } catch (e) {}
   }
@@ -559,13 +565,15 @@
 
   /* ---- Layanan dan ruang lingkup akreditasi ---- */
   const PAGE_DEF = {
-    title: () => 'Ruang lingkup kalibrasi ' + short(),
-    desc: () => 'Layanan kalibrasi untuk berbagai besaran ukur dengan standar yang tertelusur secara nasional dan internasional. Pilih satu untuk melihat detailnya.',
+    title: () => 'Ruang Lingkup ' + short(),
+    desc: () => 'Layanan kalibrasi (Calibration), pengadaan kebutuhan industri (Procurement), serta keselamatan kerja K3 (Safety). Pilih folder layanan untuk melihat detailnya.',
     toolsTitle: () => 'Alat yang kami kalibrasi',
     benefitsTitle: () => 'Yang Anda terima',
     scopeBtn: () => 'Lihat ruang lingkup akreditasi',
     consultBtn: () => 'Konsultasi'
   };
+  const isCalSvc = s => s && s.id !== 'pengadaan' && s.id !== 'safety';
+  const calServices = () => SERVICES.filter(isCalSvc);
   const ptx = k => { const v = PAGES_TXT && PAGES_TXT.layanan && PAGES_TXT.layanan[k]; return (v && String(v).trim()) ? String(v) : PAGE_DEF[k](); };
   const DEF_BENEFITS = ['Sertifikat resmi dengan nilai ketidakpastian (MU)', 'Traceability ke standar KAN/NIST', 'Pilihan layanan onsite atau inlab'];
   const BEN_ICONS = ['filecheck', 'shield', 'pin', 'award', 'clock', 'check'];
@@ -579,13 +587,18 @@
   function svcDetailInner(s, preview, T){
     const tx = k => (T && T[k] && String(T[k]).trim()) ? String(T[k]) : ptx(k);
     const tools = svcTools(s), ben = svcBenefits(s);
-    const crumb = preview ? '<span>Layanan</span>' : '<a href="#/layanan">Layanan</a>';
-    const scopeBtn = preview
+    const isCal = isCalSvc(s);
+    const crumb = preview
+      ? '<span>' + esc(tx('title')) + '</span>'
+      : `<a href="#/layanan">${esc(tx('title'))}</a>` + (isCal ? `<span>/</span><a href="#/layanan/calibration">Calibration ${esc(short())}</a>` : '');
+    const scopeBtn = !isCal ? '' : (preview
       ? `<span class="btn primary">${ic('clip', 20)} ${esc(tx('scopeBtn'))}</span>`
-      : `<button class="btn primary" data-act="scope" data-id="${esc(s.id)}">${ic('clip', 20)} ${esc(tx('scopeBtn'))}</button>`;
+      : `<button class="btn primary" data-act="scope" data-id="${esc(s.id)}">${ic('clip', 20)} ${esc(tx('scopeBtn'))}</button>`);
+    const consultCls = isCal ? 'btn ghost on-deep' : 'btn primary';
     const consult = preview
-      ? `<span class="btn ghost on-deep">${ic('chat', 20)} ${esc(tx('consultBtn'))}</span>`
-      : `<a class="btn ghost on-deep" href="${wa('Halo ' + brand() + ', saya ingin konsultasi ' + s.t + '.')}" target="_blank" rel="noopener">${ic('chat', 20)} ${esc(tx('consultBtn'))}</a>`;
+      ? `<span class="${consultCls}">${ic('chat', 20)} ${esc(tx('consultBtn'))}</span>`
+      : `<a class="${consultCls}" href="${wa('Halo ' + brand() + ', saya ingin konsultasi ' + s.t + '.')}" target="_blank" rel="noopener">${ic('chat', 20)} ${esc(tx('consultBtn'))}</a>`;
+    const listTitle = isCal ? tx('toolsTitle') : 'Cakupan Layanan';
     return `
         <div class="detail">
           <div class="d-main">
@@ -597,7 +610,7 @@
           </div>
           <div class="d-side">
             ${tools.length ? `<div>
-              <h3>${esc(tx('toolsTitle'))}</h3>
+              <h3>${esc(listTitle)}</h3>
               <ul class="checks">${tools.map(x => `<li>${ic('check', 18, 2.4)}${esc(x)}</li>`).join('')}</ul>
             </div>` : ''}
             <div>
@@ -639,18 +652,43 @@
   const closeModal = () => { const m = document.getElementById('sm'); if (m) m.classList.remove('open'); };
 
   function layananView(id){
+    const cals = calServices();
+    if (id === 'calibration') return `
+      <section class="page">
+        <div class="head">
+          <div>
+            <div class="crumb" style="margin-bottom:6px;color:var(--muted)"><a href="#/layanan" style="color:var(--accent-text);text-decoration:none;font-weight:600">${esc(ptx('title'))}</a> <span style="margin:0 6px">/</span> <span>Calibration ${esc(short())}</span></div>
+            <h2>Calibration ${esc(short())}</h2>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+            <p>Pilih bidang kalibrasi di bawah ini untuk melihat rincian alat dan ruang lingkup akreditasinya.</p>
+            <a class="btn ghost sm" href="#/layanan">${ic('arrowL', 18)} Kembali ke ${esc(ptx('title'))}</a>
+          </div>
+        </div>
+        ${cals.length ? `<div class="ledger">${cals.map((x, i) => svcRowHtml(x, i)).join('')}</div>` : '<p class="empty">Belum ada layanan kalibrasi.</p>'}
+      </section>`;
     const s = SERVICES.find(x => x.id === id);
-    if (!s) return `
+    if (!s){
+      const folders = [
+        { id: 'calibration', t: 'Calibration ' + short(), icon: 'gauge', s: 'Layanan kalibrasi Onsite & Inlab (' + cals.map(c => c.t.replace(/^Kalibrasi\s+/i, '')).join(', ') + ').' },
+        ...SERVICES.filter(x => !isCalSvc(x))
+      ];
+      return `
       <section class="page">
         <div class="head">
           <h2>${esc(ptx('title'))}</h2>
           <p>${esc(ptx('desc'))}</p>
         </div>
-        ${SERVICES.length ? `<div class="ledger">${SERVICES.map((x, i) => svcRowHtml(x, i)).join('')}</div>` : '<p class="empty">Belum ada layanan.</p>'}
+        <div class="ledger" style="grid-template-columns:1fr">${folders.map((x, i) => svcRowHtml(x, i)).join('')}</div>
       </section>`;
+    }
+    const navList = isCalSvc(s) ? cals : [
+      { id: 'calibration', t: 'Calibration ' + short() },
+      ...SERVICES.filter(x => !isCalSvc(x))
+    ];
     return `
       <section class="page">${svcDetailInner(s, false)}
-        ${dnav(SERVICES, s, 'layanan', 't')}
+        ${dnav(navList, s, 'layanan', 't')}
       </section>`;
   }
 
@@ -1430,7 +1468,7 @@
         return { ok: false, msg: 'Koneksi ke server gagal. Perubahan belum disimpan.' };
       }
     }
-    try { localStorage.setItem('fss_demo_data', JSON.stringify(dataObj)); } catch (e) {}
+    try { localStorage.setItem('fss_demo_data_v5', JSON.stringify(dataObj)); } catch (e) {}
     const html = buildHtml();
     if (new Blob([html]).size > 15.5 * 1048576) return { ok: false, msg: 'Ukuran halaman melebihi batas 16 MB. Hapus beberapa foto.' };
     let art = null;
