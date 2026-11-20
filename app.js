@@ -306,15 +306,25 @@
 
   let DATA = {};
   try { DATA = JSON.parse(document.getElementById('fss-data').textContent) || {}; } catch (e) { DATA = {}; }
-  let serverDataVersion = null;
+  let serverDataVersion = null, hasBackendApi = false;
   if (location.protocol.startsWith('http')) {
     try {
-      let response = await fetch('/api/data', { cache: 'no-store' });
-      if (!response.ok) response = await fetch('data.json', { cache: 'no-store' });
-      if (response.ok) {
-        DATA = await response.json();
-        serverDataVersion = response.headers.get('X-Data-Version');
+      const apiRes = await fetch('/api/data', { cache: 'no-store' });
+      const ct = (apiRes.headers.get('content-type') || '').toLowerCase();
+      if (apiRes.ok && ct.includes('application/json')) {
+        DATA = await apiRes.json();
+        serverDataVersion = apiRes.headers.get('X-Data-Version');
+        hasBackendApi = true;
+      } else {
+        const staticRes = await fetch('data.json', { cache: 'no-store' });
+        if (staticRes.ok) DATA = await staticRes.json();
       }
+    } catch (e) {}
+  }
+  if (!hasBackendApi) {
+    try {
+      const localDemo = localStorage.getItem('fss_demo_data');
+      if (localDemo) DATA = Object.assign({}, DATA, JSON.parse(localDemo));
     } catch (e) {}
   }
   if (Array.isArray(DATA.services)) SERVICES = DATA.services;
@@ -374,7 +384,8 @@
   let SCOPE = (DATA.scope && typeof DATA.scope === 'object' && !Array.isArray(DATA.scope)) ? DATA.scope : SCOPE_SEED;
   let SETTINGS = (DATA.settings && typeof DATA.settings === 'object' && !Array.isArray(DATA.settings)) ? DATA.settings : {};
   let PAGES_TXT = (DATA.pages && typeof DATA.pages === 'object' && !Array.isArray(DATA.pages)) ? DATA.pages : {};
-  let pinHash = DATA.pinHash || null;
+  const DEFAULT_PIN_HASH = 'c9f4c8d978856cbcc0b683b5db475aaee5c893dbfa94bb987c4680e2a5c7c3dc';
+  let pinHash = DATA.pinHash || DEFAULT_PIN_HASH;
   let pf = { cat: 'all', page: 0 };
   const nf = { page: 0 };
   let gal = { id: null, i: 0 };
@@ -938,19 +949,19 @@
     if (wait > 0){ err.textContent = 'Terlalu banyak percobaan. Coba lagi dalam ' + Math.ceil(wait / 1000) + ' detik.'; return; }
     const label = btn.textContent; btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Memeriksa PIN...';
     let good = false, loginError = '';
-    if (location.protocol.startsWith('http')){
+    if (hasBackendApi){
       try {
         const response = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pin: inp.value })
         });
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
         if (response.ok){
           const dataResponse = await fetch('/api/data', { cache: 'no-store' });
           if (!dataResponse.ok) throw new Error('Sesi Admin gagal disiapkan. Coba masuk kembali.');
           const adminData = await dataResponse.json();
-          pinHash = adminData.pinHash || null;
+          pinHash = adminData.pinHash || DEFAULT_PIN_HASH;
           good = true;
         } else {
           loginError = result.error || 'PIN admin salah.';
@@ -1402,7 +1413,7 @@
   }
   async function persist(){
     const dataObj = { v: 2, pinHash: pinHash, projects: P, services: SERVICES, scope: SCOPE, news: N, reviews: REVIEWS, google: GOOGLE, settings: SETTINGS, pages: PAGES_TXT };
-    if (location.protocol.startsWith('http')) {
+    if (hasBackendApi) {
       try {
         const res = await fetch('/api/data', {
           method: 'POST',
@@ -1419,6 +1430,7 @@
         return { ok: false, msg: 'Koneksi ke server gagal. Perubahan belum disimpan.' };
       }
     }
+    try { localStorage.setItem('fss_demo_data', JSON.stringify(dataObj)); } catch (e) {}
     const html = buildHtml();
     if (new Blob([html]).size > 15.5 * 1048576) return { ok: false, msg: 'Ukuran halaman melebihi batas 16 MB. Hapus beberapa foto.' };
     let art = null;
