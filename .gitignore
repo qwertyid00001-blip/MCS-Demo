@@ -3,4 +3,6 @@ node_modules/
 backups/
 SURAT-*
 BUKU-PANDUAN-WEB.*
+deploy-hostinger/
+deploy-hostinger.zip
 image.png

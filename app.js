@@ -1,18 +1,14 @@
 (async () => {
   const SKEL = `<header class="top">
-  <a class="brand" href="#/" aria-label="Focus Survey Solution, ke beranda">
-    <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true">
-      <path d="M20 19 37 28 20 37 3 28Z" fill="#0f6b6a" stroke="var(--bg)" stroke-width="1.5" stroke-linejoin="round"/>
-      <path d="M20 11 37 20 20 29 3 20Z" fill="#ff8a00" stroke="var(--bg)" stroke-width="1.5" stroke-linejoin="round"/>
-      <path d="M20 3 37 12 20 21 3 12Z" fill="#0a2e2f" stroke="var(--bg)" stroke-width="1.5" stroke-linejoin="round"/>
-    </svg>
-    <span>Focus Survey Solution</span>
+  <a class="brand" href="#/" aria-label="Multidaya Cipta Solusi, ke beranda">
+    <img class="logo-img" src="icon-192.png" alt="" style="height:38px;max-width:122px">
+    <span>Multidaya Cipta Solusi</span>
   </a>
   <nav class="nav" id="nav" aria-label="Menu utama"></nav>
   <a class="btn primary sm" href="#/kontak">Hubungi kami</a>
   <a class="adm" href="#/admin"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Admin</a>
   <div class="menu-wrap">
-    <button class="burger" id="burger" aria-label="Buka menu" aria-expanded="false" data-act="menu"></button>
+    <button class="burger" id="burger" aria-label="Buka menu" aria-expanded="false" data-act="menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <div class="drawer" id="drawer" role="dialog" aria-label="Menu">
       <div class="d-head" hidden>
         <span class="brand"><span>Menu</span></span>
@@ -286,7 +282,7 @@
 
   const TESTI = [
     { i:'PN', c:'#0b86c0', n:'PT. Manufaktur Nusantara', s:'Industri otomotif', r:'4.8',
-      q:'Sangat profesional. Teknisi Focus Survey Solution sangat paham standar ISO 17025. Sertifikat cepat keluar dan sangat membantu audit.' },
+      q:'Sangat profesional. Teknisi Multidaya Cipta Solusi sangat paham standar ISO 17025. Sertifikat cepat keluar dan sangat membantu audit.' },
     { i:'RU', c:'#0e9e72', n:'RS Medika Utama', s:'Kesehatan', r:'5',
       q:'Kalibrasi alkes onsite sangat membantu kami karena alat tidak perlu keluar rumah sakit. Akurasi terjamin!' },
     { i:'PJ', c:'#c26a00', n:'PT. Petrokimia Jaya', s:'Minyak & gas', r:'5',
@@ -317,6 +313,7 @@
 
   let DATA = {};
   try { DATA = JSON.parse(document.getElementById('fss-data').textContent) || {}; } catch (e) { DATA = {}; }
+  if (DATA.settings) applyAll(DATA.settings);
   let serverDataVersion = null, hasBackendApi = false;
   if (location.protocol.startsWith('http')) {
     try {
@@ -2037,7 +2034,7 @@
     el.innerHTML = `<div class="intro-in">
         <div class="i-brand">${logoHtml(SETTINGS, 34, true)}${(SETTINGS.logo && SETTINGS.logoName === false) ? '' : '<span>' + esc(brand()) + '</span>'}</div>
         ${tachSvg()}
-        <p class="i-tag">Beyond Calibration. Built on Precision.</p>
+        <p class="i-tag">General Trading · Calibration · Procurement · Service Maintenance &amp; Supplier</p>
       </div>
       <button class="i-skip" type="button">Lewati</button>`;
     document.body.appendChild(el); introOn = true;

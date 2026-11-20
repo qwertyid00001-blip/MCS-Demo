@@ -17,6 +17,17 @@ Options -Indexes
   </IfModule>
 </FilesMatch>
 
+# Izinkan akses publik khusus untuk Web App Manifest (PWA / Add to Home Screen)
+<Files "manifest.json">
+  <IfModule mod_authz_core.c>
+    Require all granted
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+  </IfModule>
+</Files>
+
 <FilesMatch "^(server\.js|package\.json|package-lock\.json|\.htaccess)$">
   <IfModule mod_authz_core.c>
     Require all denied
