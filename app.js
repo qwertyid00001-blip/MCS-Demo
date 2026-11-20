@@ -116,10 +116,8 @@
     else if (root.dataset.fssMode){ root.removeAttribute('data-theme'); delete root.dataset.fssMode; }
   }
   function logoHtml(s, size, onDark){
-    const lg = s && s.logo && (s.logo.s || (typeof s.logo === 'string' ? s.logo : ''));
-    if (lg) return `<img class="logo-img" src="${esc(lg)}" alt="" style="height:${size}px;max-width:${Math.round(size * 3.2)}px">`;
-    const top = onDark ? '#ffffff' : '#0a2e2f', edge = onDark ? 'stroke="#0a2e2f"' : 'style="stroke:var(--bg)"';
-    return `<svg width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 19 37 28 20 37 3 28Z" fill="#0f6b6a" ${edge} stroke-width="1.5" stroke-linejoin="round"/><path d="M20 11 37 20 20 29 3 20Z" fill="#ff8a00" ${edge} stroke-width="1.5" stroke-linejoin="round"/><path d="M20 3 37 12 20 21 3 12Z" fill="${top}" ${edge} stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+    const lg = (s && s.logo && (s.logo.s || (typeof s.logo === 'string' ? s.logo : ''))) || 'icon-192.png';
+    return `<img class="logo-img" src="${esc(lg)}" alt="" style="height:${size}px;max-width:${Math.round(size * 3.2)}px">`;
   }
   function applyBrand(s){
     const hb = document.querySelector('header.top .brand');
