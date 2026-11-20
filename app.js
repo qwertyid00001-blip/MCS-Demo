@@ -241,7 +241,12 @@
       s:'1. Pengadaan & Refill Apar · 2. Hydrostatic Test SCBA dan EEBA · 3. Pelatihan K3 · 4. Kebutuhan K3.',
       l:'Melayani seluruh kebutuhan Keselamatan dan Kesehatan Kerja (K3) perusahaan Anda, meliputi pengadaan & isi ulang APAR, pengujian hidrostatik SCBA/EEBA, hingga pelatihan keselamatan kerja.',
       items:['1. Pengadaan & Refill Apar','2. Hydrostatic Test SCBA dan EEBA','3. Pelatihan Keselamatan Kerja','4. Melayani seluruh kebutuhan K3'],
-      benefits:['Sesuai standar keselamatan kerja (K3)','Ditangani teknisi & instruktur berpengalaman','Melayani kebutuhan K3 industri di seluruh Indonesia'] }
+      benefits:['Sesuai standar keselamatan kerja (K3)','Ditangani teknisi & instruktur berpengalaman','Melayani kebutuhan K3 industri di seluruh Indonesia'] },
+    { id:'it', t:'IT Service MCS', icon:'activity',
+      s:'1. Landing Page · 2. POS · 3. SaaS · 4. ERP · 5. Layanan IT lainnya.',
+      l:'Layanan pengembangan solusi teknologi informasi (IT Service) untuk mendukung digitalisasi dan efisiensi operasional bisnis Anda, mulai dari pembuatan Landing Page, aplikasi POS, SaaS, sistem ERP, dan kebutuhan IT lainnya.',
+      items:['1. Landing Page','2. POS (Point of Sale)','3. SaaS (Software as a Service)','4. ERP (Enterprise Resource Planning)','5. Dan lain-lain (kebutuhan IT & sistem lainnya)'],
+      benefits:['Desain modern, cepat & responsif di semua perangkat','Sistem dapat disesuaikan dengan alur bisnis Anda','Dukungan teknis & pemeliharaan berkelanjutan'] }
   ];
 
   const ADV = [
@@ -329,7 +334,7 @@
   }
   if (!hasBackendApi) {
     try {
-      const localDemo = localStorage.getItem('fss_demo_data_v5');
+      const localDemo = localStorage.getItem('fss_demo_data_v6');
       if (localDemo) DATA = Object.assign({}, DATA, JSON.parse(localDemo));
     } catch (e) {}
   }
@@ -566,13 +571,13 @@
   /* ---- Layanan dan ruang lingkup akreditasi ---- */
   const PAGE_DEF = {
     title: () => 'Ruang Lingkup ' + short(),
-    desc: () => 'Layanan kalibrasi (Calibration), pengadaan kebutuhan industri (Procurement), serta keselamatan kerja K3 (Safety). Pilih folder layanan untuk melihat detailnya.',
+    desc: () => 'Layanan kalibrasi (Calibration), pengadaan kebutuhan industri (Procurement), keselamatan kerja K3 (Safety), serta solusi teknologi informasi (IT Service). Pilih folder layanan untuk melihat detailnya.',
     toolsTitle: () => 'Alat yang kami kalibrasi',
     benefitsTitle: () => 'Yang Anda terima',
     scopeBtn: () => 'Lihat ruang lingkup akreditasi',
     consultBtn: () => 'Konsultasi'
   };
-  const isCalSvc = s => s && s.id !== 'pengadaan' && s.id !== 'safety';
+  const isCalSvc = s => s && !['pengadaan', 'safety', 'it'].includes(s.id);
   const calServices = () => SERVICES.filter(isCalSvc);
   const ptx = k => { const v = PAGES_TXT && PAGES_TXT.layanan && PAGES_TXT.layanan[k]; return (v && String(v).trim()) ? String(v) : PAGE_DEF[k](); };
   const DEF_BENEFITS = ['Sertifikat resmi dengan nilai ketidakpastian (MU)', 'Traceability ke standar KAN/NIST', 'Pilihan layanan onsite atau inlab'];
@@ -1468,7 +1473,7 @@
         return { ok: false, msg: 'Koneksi ke server gagal. Perubahan belum disimpan.' };
       }
     }
-    try { localStorage.setItem('fss_demo_data_v5', JSON.stringify(dataObj)); } catch (e) {}
+    try { localStorage.setItem('fss_demo_data_v6', JSON.stringify(dataObj)); } catch (e) {}
     const html = buildHtml();
     if (new Blob([html]).size > 15.5 * 1048576) return { ok: false, msg: 'Ukuran halaman melebihi batas 16 MB. Hapus beberapa foto.' };
     let art = null;
