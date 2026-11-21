@@ -1776,6 +1776,10 @@
         setMsg('');
         rerender(true);
         break;
+      case 'trk-filter':
+        trkState.adminFilter = t.dataset.v || 'all';
+        rerender(true);
+        break;
       case 'trk-new-order':
         trkState.editOrderId = null;
         trkState.orderDraft = newOrderDraft();
@@ -2548,6 +2552,7 @@
     verifyQuery: '',
     roleUserId: 'u_admin', // active user ID in portal ('u_admin', 'u_tech1', 'u_wh1', 'u_qc1')
     adminSub: 'list', // 'list' | 'form' | 'staff'
+    adminFilter: 'all', // 'all' | 'qc' | 'recal'
     editOrderId: null,
     orderDraft: null,
     workerTab: 'active' // 'active' | 'history'
@@ -2775,10 +2780,10 @@
     const found = findOrderByQuery(activeCode);
     const ord = found ? found.order : null;
     const matchedSn = found ? found.matchedSn : null;
-    const demoChips = (TRACKING.orders || []).slice(0, 4).map(o => `<button type="button" class="trk-chip" data-act="trk-pick" data-code="${esc(o.tracking_code)}">${esc(o.tracking_code)} (${esc(o.division.replace(/\s*MCS.*/, ''))})</button>`).join('')
-      + `<button type="button" class="trk-chip" data-act="trk-pick" data-code="SN-MTR-8821">Contoh SN: SN-MTR-8821</button>`;
+    const demoChips = (TRACKING.orders || []).slice(0, 4).map(o => `<button type="button" class="trk-chip${ord && ord.id === o.id ? ' on' : ''}" data-act="trk-pick" data-code="${esc(o.tracking_code)}">${esc(o.tracking_code)}</button>`).join('')
+      + `<button type="button" class="trk-chip${matchedSn === 'SN-MTR-8821' ? ' on' : ''}" data-act="trk-pick" data-code="SN-MTR-8821">SN-MTR-8821</button>`;
 
-    let detailHtml = `<div class="trk-card"><p class="hint">Kode Tracking atau Nomor Seri <b>"${esc(activeCode)}"</b> tidak ditemukan. Pastikan ejaan kode sesuai tanda terima atau klik salah satu contoh kode di atas.</p></div>`;
+    let detailHtml = `<div class="trk-card"><p class="hint">Kode Tracking atau Nomor Seri <b>"${esc(activeCode)}"</b> tidak ditemukan. Pastikan ejaan kode sesuai tanda terima atau pilih salah satu contoh di atas.</p></div>`;
     if (ord){
       const steps = ord.steps || [];
       const doneCount = steps.filter(s => s.status === 'DONE').length;
@@ -2791,26 +2796,24 @@
         const cls = pubStatus === 'DONE' ? 'done' : pubStatus === 'ACTIVE' ? 'active' : '';
         const u = userById(st.assigned_user_id);
         const photosHtml = (st.photos || []).length ? `<div class="trk-sphotos">${st.photos.map(ph => `
-          <div class="trk-pthumb" data-act="trk-zoom" data-src="${esc(ph.s)}" title="Klik untuk memperbesar (${ph.compKb || 160} KB)">
+          <div class="trk-pthumb" data-act="trk-zoom" data-src="${esc(ph.s)}" title="Klik untuk memperbesar">
             <img src="${esc(ph.s)}" alt="Bukti tahap ${st.step_no}">
-            <span>${ph.compKb ? ph.compKb + ' KB' : 'Bukti Foto'}</span>
+            <span>${ph.compKb ? ph.compKb + ' KB' : 'Foto'}</span>
           </div>`).join('')}</div>` : '';
         return `
           <div class="trk-step ${cls}">
-            <div class="trk-dot">${pubStatus === 'DONE' ? ic('check', 16, 2.6) : (idx + 1)}</div>
+            <div class="trk-dot">${pubStatus === 'DONE' ? ic('check', 15, 2.5) : (idx + 1)}</div>
             <div class="trk-sbody">
               <div class="trk-shead">
-                <div>
-                  <b>Tahap ${idx + 1}: ${esc(st.title)}</b>
-                  ${st.is_qc_gate ? `<span class="trk-badge qc" style="margin-left:6px">${ic('shield', 13)} Gate ${st.qc_type === 'incoming' ? 'Incoming QC' : 'Outgoing QC'}</span>` : ''}
-                </div>
-                <span class="trk-badge st-${pubStatus}">${pubStatus === 'DONE' ? 'Selesai' : pubStatus === 'ACTIVE' ? 'Sedang Dikerjakan' : 'Menunggu Giliran'}</span>
+                <b>${esc(st.title)}</b>
+                <span class="trk-badge st-${pubStatus}">${pubStatus === 'DONE' ? 'Selesai' : pubStatus === 'ACTIVE' ? 'Sedang Dikerjakan' : 'Menunggu'}</span>
               </div>
-              <p style="font-size:13.5px;color:var(--muted)">${esc(st.instruction)}</p>
-              ${st.worker_note && pubStatus === 'DONE' ? `<div style="font-size:13.5px;background:var(--surface);padding:8px 11px;border-radius:10px;border:1px solid var(--line)"><b>Catatan Petugas:</b> ${esc(st.worker_note)}</div>` : ''}
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)">
-                <span>Penanggung Jawab: <b>${esc(u.name)}</b></span>
-                ${st.completed_at ? `<span>Selesai: <b>${esc(st.completed_at)}</b></span>` : ''}
+              <p class="trk-sub" style="margin:0">${esc(st.instruction)}</p>
+              ${st.worker_note && pubStatus === 'DONE' ? `<div class="trk-note">${esc(st.worker_note)}</div>` : ''}
+              <div class="trk-smeta">
+                <span>Petugas: <b>${esc(u.name)}</b></span>
+                ${st.is_qc_gate ? `<span>${st.qc_type === 'incoming' ? 'Pemeriksaan Incoming QC' : 'Pemeriksaan Outgoing QC'}</span>` : ''}
+                ${st.completed_at ? `<span>${esc(st.completed_at)}</span>` : ''}
               </div>
               ${photosHtml}
             </div>
@@ -2820,9 +2823,8 @@
       const itemsHtml = (ord.items || []).map((it, idx) => `
         <tr style="${matchedSn && it.serial_number === matchedSn ? 'background:var(--accent-soft)' : ''}">
           <td>${idx + 1}</td>
-          <td><b>${esc(it.item_name)}</b></td>
-          <td>${esc(it.brand_model || '-')}</td>
-          <td><code>${esc(it.serial_number)}</code> ${matchedSn && it.serial_number === matchedSn ? '<span class="trk-badge st-ACTIVE">SN Dicari</span>' : ''}</td>
+          <td><b>${esc(it.item_name)}</b><br><span class="trk-sub">${esc(it.brand_model || '-')}</span></td>
+          <td><code>${esc(it.serial_number)}</code></td>
         </tr>`).join('');
 
       detailHtml = `
@@ -2830,23 +2832,24 @@
           <div class="trk-card">
             <div class="trk-head">
               <div>
-                <small style="color:var(--muted);font-weight:600">${esc(ord.division)} · ${esc(ord.category)}</small>
+                <div class="trk-sub">${esc(ord.division)}</div>
                 <div class="trk-code">${esc(ord.tracking_code)}</div>
-                <div style="font-size:14px;color:var(--muted)">Klien: <b>${esc(ord.client_name)}</b> (PIC: ${esc(ord.pic_name || '-')})</div>
+                <div class="trk-sub"><b>${esc(ord.client_name)}</b> · PIC: ${esc(ord.pic_name || '-')}</div>
               </div>
               <div style="text-align:right">
                 <span class="trk-badge st-${esc(ord.status)}">${esc(STATUS_LABEL[ord.status] || ord.status)}</span>
-                <div style="font-size:12.5px;color:var(--muted);margin-top:4px">Progres: <b>${doneCount}/${steps.length} Tahap (${pct}%)</b></div>
+                <div class="trk-sub" style="margin-top:4px">${doneCount} dari ${steps.length} tahap selesai (${pct}%)</div>
               </div>
             </div>
+            <div class="trk-prog"><i style="width:${pct}%"></i></div>
 
-            <h3 style="font-size:16.5px;margin-top:4px">Live Progress Timeline Pengerjaan</h3>
+            <h3 style="font-size:15.5px;margin:0">Tahapan Pengerjaan</h3>
             <div class="trk-timeline">${timelineHtml}</div>
 
-            <h3 style="font-size:16.5px;margin-top:8px">Daftar Unit &amp; Nomor Seri (Serial Number)</h3>
-            <div style="overflow-x:auto;border:1px solid var(--line);border-radius:14px">
+            <h3 style="font-size:15.5px;margin:4px 0 0">Daftar Unit &amp; Nomor Seri</h3>
+            <div style="overflow-x:auto">
               <table class="trk-sn-tbl">
-                <thead><tr><th>No</th><th>Nama Alat / Barang</th><th>Merek &amp; Tipe</th><th>Nomor Seri (SN)</th></tr></thead>
+                <thead><tr><th>No</th><th>Unit / Model</th><th>Nomor Seri (SN)</th></tr></thead>
                 <tbody>${itemsHtml}</tbody>
               </table>
             </div>
@@ -2854,32 +2857,32 @@
 
           <div style="display:grid;gap:16px">
             <div class="trk-card">
-              <h3 style="font-size:17px;display:flex;align-items:center;gap:8px">${ic('truck', 20)} Informasi Pengiriman &amp; Dokumen</h3>
+              <h3 style="font-size:16px;margin:0">Pengiriman &amp; Dokumen</h3>
               <div class="trk-meta">
-                <div><small>Ekspedisi / Pengiriman</small><b>${esc(ord.courier || '-')}</b></div>
-                <div><small>Nomor Resi</small><b>${esc(ord.receipt_no || 'Belum Tersedia')}</b></div>
+                <div><small>Ekspedisi</small><b>${esc(ord.courier || '-')}</b></div>
+                <div><small>Nomor Resi</small><b>${esc(ord.receipt_no || 'Belum ada')}</b></div>
                 <div><small>No. Sertifikat / BAST</small><b>${esc(ord.cert_no || '-')}</b></div>
-                <div><small>Masa Berlaku s/d</small><b>${esc(ord.valid_until || '-')}</b></div>
+                <div><small>Berlaku s/d</small><b>${esc(ord.valid_until || '-')}</b></div>
               </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
                 ${isDone
-                  ? `<button type="button" class="btn primary sm" data-act="trk-cert" data-id="${esc(ord.id)}">${ic('download', 18)} Unduh Sertifikat / BAST (PDF)</button>`
-                  : `<button type="button" class="btn ghost sm" disabled title="Tersedia setelah seluruh tahapan & Final QC selesai">${ic('lock', 16)} Sertifikat Tersedia Saat Order Selesai</button>`}
-                <button type="button" class="btn ghost sm" data-act="trk-qr-print" data-id="${esc(ord.id)}">${ic('image', 18)} Lihat / Cetak Label QR</button>
+                  ? `<button type="button" class="btn primary sm" data-act="trk-cert" data-id="${esc(ord.id)}">${ic('download', 17)} Unduh Sertifikat / BAST</button>`
+                  : `<button type="button" class="btn ghost sm" disabled>${ic('lock', 15)} Sertifikat Siap Setelah Selesai</button>`}
+                <button type="button" class="btn ghost sm" data-act="trk-qr-print" data-id="${esc(ord.id)}">${ic('image', 17)} Label QR</button>
               </div>
             </div>
 
             <div class="trk-card">
-              <h3 style="font-size:17px;display:flex;align-items:center;gap:8px">${ic('shield', 20)} Verifikasi Keaslian Sertifikat &amp; QC</h3>
-              <div style="display:flex;gap:14px;align-items:center;background:var(--surface-2);padding:12px;border-radius:14px;border:1px solid var(--line)">
-                <div class="qr-box" style="padding:6px">${qrSvg(ord.tracking_code, 78)}</div>
-                <div style="display:grid;gap:4px;font-size:13.5px">
-                  <div>Status Dokumen: <span class="trk-badge ${validOk ? 'st-DONE' : 'st-REWORK'}">${validOk ? 'VALID & TERVERIFIKASI' : 'KEDALUWARSA (PERLU RE-KALIBRASI)'}</span></div>
-                  <div>No. Sertifikat: <b>${esc(ord.cert_no || '-')}</b></div>
-                  <div>Jatuh Tempo Re-Kalibrasi: <b>${esc(ord.valid_until || '-')}</b></div>
+              <h3 style="font-size:16px;margin:0">Verifikasi Keaslian</h3>
+              <div style="display:flex;gap:14px;align-items:center">
+                <div class="qr-box">${qrSvg(ord.tracking_code, 72)}</div>
+                <div style="display:grid;gap:4px;font-size:13px">
+                  <div><span class="trk-badge ${validOk ? 'st-DONE' : 'st-REWORK'}">${validOk ? 'Terverifikasi & Berlaku' : 'Perlu Re-Kalibrasi'}</span></div>
+                  <div>No: <b>${esc(ord.cert_no || '-')}</b></div>
+                  <div class="trk-sub">Re-kalibrasi: ${esc(ord.valid_until || '-')}</div>
                 </div>
               </div>
-              <a class="btn ghost sm" href="${wa('Halo ' + brand() + ', saya ingin menanyakan progres order dengan Kode Tracking ' + ord.tracking_code + ' (' + ord.client_name + ').')}" target="_blank" rel="noopener">${ic('chat', 18)} Hubungi Admin tentang Order Ini</a>
+              <a class="btn ghost sm" href="${wa('Halo ' + brand() + ', saya ingin menanyakan order ' + ord.tracking_code + ' (' + ord.client_name + ').')}" target="_blank" rel="noopener">${ic('chat', 17)} Tanya Admin via WhatsApp</a>
             </div>
           </div>
         </div>`;
@@ -2889,20 +2892,20 @@
       <section class="page" style="justify-content:flex-start">
         <div class="trk-wrap">
           <div class="trk-hero">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+            <div class="trk-hero-top">
               <div>
-                <h2>Lacak Status Kalibrasi, Pengadaan &amp; Sertifikat</h2>
-                <p>Masukkan <b>Kode Tracking Perusahaan</b> atau <b>Nomor Seri Alat (Serial Number)</b> untuk memantau progres tahapan pengerjaan, foto bukti lolos QC, nomor resi, dan mengunduh sertifikat digital.</p>
+                <h2>Lacak Status Order &amp; Sertifikat</h2>
+                <p>Masukkan Kode Tracking atau Nomor Seri Alat (SN) untuk melihat progres pengerjaan, foto bukti QC, nomor resi, dan sertifikat digital.</p>
               </div>
-              <a class="btn ghost on-deep sm" href="#/admin">${ic('lock', 16)} Portal Pekerja / QC / Admin</a>
+              <a class="btn ghost on-deep sm" href="#/admin">${ic('lock', 15)} Portal Staf / Admin</a>
             </div>
             <form class="trk-search" id="trk-search-form">
-              <input type="text" id="trk-q" name="q" value="${esc(activeCode)}" placeholder="Ketik Kode Tracking (mis. MCS-CAL-2026-001) atau Nomor Seri (mis. SN-MTR-8821)..." autocomplete="off">
-              <button type="submit" class="btn primary">${ic('search', 18)} Lacak Sekarang</button>
-              <button type="button" class="btn ghost on-deep" data-act="trk-scan">${ic('image', 18)} Scan QR Alat</button>
+              <input type="text" id="trk-q" name="q" value="${esc(activeCode)}" placeholder="Masukkan Kode Tracking atau Nomor Seri (contoh: MCS-CAL-2026-001)" autocomplete="off">
+              <button type="submit" class="btn primary">${ic('search', 17)} Lacak</button>
+              <button type="button" class="btn ghost on-deep" data-act="trk-scan">${ic('image', 17)} Scan QR</button>
             </form>
             <div class="trk-demos">
-              <span>Coba kode demo:</span>
+              <span>Contoh cepat:</span>
               ${demoChips}
             </div>
           </div>
@@ -2956,33 +2959,35 @@
   function adminTrackingPanel(){
     const curUser = userById(trkState.roleUserId);
     const orders = TRACKING.orders || [];
+    const roleIcon = r => r === 'ADMIN' ? ic('users', 14) : r === 'QC' ? ic('shield', 14) : ic('wrench', 14);
     const roleButtons = (TRACKING.users || []).map(u => `
       <button type="button" class="role-btn ${u.id === curUser.id ? 'on' : ''}" data-act="trk-role" data-uid="${esc(u.id)}">
-        ${u.role === 'ADMIN' ? '👑 ' : u.role === 'QC' ? '🛡️ ' : '🔧 '}${esc(u.name)}
+        ${roleIcon(u.role)} ${esc(u.name.replace(/\s*\([^)]*\)/, ''))}
       </button>`).join('');
 
     const roleHeader = `
       <div class="role-bar">
         <div>
-          <div style="font-size:12px;opacity:.8;text-transform:uppercase;letter-spacing:.05em">Mode Portal Operasional Multi-Role (Simulasi Demo &amp; Produksi)</div>
-          <div style="font-size:17px;font-weight:800">Masuk sebagai: ${esc(curUser.name)} — <span style="color:var(--accent-2)">${curUser.role === 'ADMIN' ? 'Super Admin / CS' : curUser.role === 'QC' ? 'Petugas Gate QC' : 'Portal Mobile Pekerja'}</span></div>
+          <div style="font-size:15px;font-weight:700">${esc(curUser.name)}</div>
+          <div class="trk-sub">Peran aktif: ${curUser.role === 'ADMIN' ? 'Super Admin / CS' : curUser.role === 'QC' ? 'Petugas Gate QC' : 'Portal Pekerja'}</div>
         </div>
-        <div class="role-pills" role="group" aria-label="Pilih Peran Staf">${roleButtons}</div>
+        <div class="role-pills" role="group" aria-label="Ganti Peran Staf">${roleButtons}</div>
       </div>`;
 
-    if (curUser.role === 'WORKER') return roleHeader + workerPortalView(curUser);
-    if (curUser.role === 'QC') return roleHeader + qcPortalView(curUser);
+    if (curUser.role === 'WORKER') return `<div class="trk-admin">${roleHeader}${workerPortalView(curUser)}</div>`;
+    if (curUser.role === 'QC') return `<div class="trk-admin">${roleHeader}${qcPortalView(curUser)}</div>`;
 
-    // SUPER ADMIN VIEW
     const inProg = orders.filter(o => o.status === 'IN_PROGRESS').length;
     const waitQc = orders.filter(o => o.status === 'WAITING_QC' || (o.steps || []).some(s => s.is_qc_gate && s.status === 'ACTIVE')).length;
     const doneOrd = orders.filter(o => o.status === 'READY_TO_SHIP' || o.status === 'COMPLETED').length;
 
     const subTabs = `
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-        <button type="button" class="btn ${trkState.adminSub === 'list' ? 'primary' : 'ghost'} sm" data-act="trk-sub" data-v="list">${ic('box', 17)} Dashboard &amp; Daftar Order (${orders.length})</button>
-        <button type="button" class="btn ${trkState.adminSub === 'form' ? 'primary' : 'ghost'} sm" data-act="trk-new-order">${ic('plus', 17)} Buat Order Baru &amp; Susun Step</button>
-        <button type="button" class="btn ${trkState.adminSub === 'staff' ? 'primary' : 'ghost'} sm" data-act="trk-sub" data-v="staff">${ic('users', 17)} Akun Pekerja &amp; Master Template</button>
+      <div class="trk-toolbar">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="btn ${trkState.adminSub === 'list' ? 'primary' : 'ghost'} sm" data-act="trk-sub" data-v="list">Daftar Order (${orders.length})</button>
+          <button type="button" class="btn ${trkState.adminSub === 'form' ? 'primary' : 'ghost'} sm" data-act="trk-new-order">${ic('plus', 15)} Buat Order</button>
+          <button type="button" class="btn ${trkState.adminSub === 'staff' ? 'primary' : 'ghost'} sm" data-act="trk-sub" data-v="staff">Akun Staf</button>
+        </div>
       </div>`;
 
     if (trkState.adminSub === 'form'){
@@ -2999,240 +3004,190 @@
       const stepRows = (d.steps || []).map((st, idx) => `
         <div class="sb-item">
           <div class="sb-top">
-            <b>Step #${idx + 1} — <span class="trk-badge st-${esc(st.status)}">${esc(STEP_LABEL[st.status] || st.status)}</span></b>
+            <b>Tahap #${idx + 1} · <span class="trk-badge st-${esc(st.status)}">${esc(STEP_LABEL[st.status] || st.status)}</span></b>
             <div style="display:flex;gap:6px">
               <button type="button" class="btn ghost sm" data-act="trk-step-move" data-i="${idx}" data-d="-1" ${idx === 0 ? 'disabled' : ''}>↑</button>
               <button type="button" class="btn ghost sm" data-act="trk-step-move" data-i="${idx}" data-d="1" ${idx === d.steps.length - 1 ? 'disabled' : ''}>↓</button>
-              <button type="button" class="btn ghost sm" data-act="trk-del-step" data-i="${idx}">${ic('trash', 16)} Hapus</button>
+              <button type="button" class="btn ghost sm" data-act="trk-del-step" data-i="${idx}">${ic('trash', 15)}</button>
             </div>
           </div>
           <div class="three">
             <label class="field">Judul Tahapan<input data-trk-step="${idx}" data-k="title" value="${esc(st.title)}" placeholder="Contoh: Kalibrasi Lab"></label>
-            <label class="field">Ditugaskan ke Pekerja / QC
+            <label class="field">Penanggung Jawab
               <select data-trk-step="${idx}" data-k="assigned_user_id">
-                ${(TRACKING.users || []).map(u => `<option value="${esc(u.id)}" ${st.assigned_user_id === u.id ? 'selected' : ''}>${esc(u.name)} (${esc(u.role)})</option>`).join('')}
+                ${(TRACKING.users || []).map(u => `<option value="${esc(u.id)}" ${st.assigned_user_id === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}
               </select>
             </label>
-            <label class="field">Gerbang Quality Control (Gate QC)
+            <label class="field">Jenis Tahap
               <select data-trk-step="${idx}" data-k="qc_type">
-                <option value="" ${!st.is_qc_gate ? 'selected' : ''}>Bukan Gate QC (Tahap Pekerja)</option>
-                <option value="incoming" ${st.is_qc_gate && st.qc_type === 'incoming' ? 'selected' : ''}>🛡️ Gate Incoming QC (Saat Masuk)</option>
-                <option value="outgoing" ${st.is_qc_gate && st.qc_type === 'outgoing' ? 'selected' : ''}>🛡️ Gate Outgoing QC (Sebelum Kirim)</option>
+                <option value="" ${!st.is_qc_gate ? 'selected' : ''}>Tahap Pekerja</option>
+                <option value="incoming" ${st.is_qc_gate && st.qc_type === 'incoming' ? 'selected' : ''}>Gate Incoming QC</option>
+                <option value="outgoing" ${st.is_qc_gate && st.qc_type === 'outgoing' ? 'selected' : ''}>Gate Outgoing QC</option>
               </select>
             </label>
           </div>
-          <label class="field">Instruksi Kerja Detail (Muncul sebagai Checkbox di HP Pekerja)<input data-trk-step="${idx}" data-k="instruction" value="${esc(st.instruction)}" placeholder="Tulis instruksi SOP untuk tahapan ini..."></label>
+          <label class="field">Instruksi Kerja<input data-trk-step="${idx}" data-k="instruction" value="${esc(st.instruction)}" placeholder="Tulis instruksi SOP untuk tahapan ini..."></label>
         </div>`).join('');
 
-      return roleHeader + subTabs + `
-        <form id="trk-order-form" class="trk-card" autocomplete="off">
+      return `<div class="trk-admin">${roleHeader}${subTabs}
+        <form id="trk-order-form" style="display:grid;gap:16px" autocomplete="off">
           <div class="trk-head">
             <div>
-              <h3>${trkState.editOrderId ? 'Edit Order &amp; Tahapan Kerja' : 'Registrasi Order Baru &amp; Penerbitan Kode Tracking'}</h3>
-              <p class="hint">Pilih salah satu dari 4 divisi MCS, daftarkan multi-nomor seri unit, dan susun estafet pekerjaan antar-staf.</p>
+              <h3 style="margin:0">${trkState.editOrderId ? 'Edit Order &amp; Tahapan' : 'Buat Order Tracking Baru'}</h3>
+              <span class="trk-sub">Pilih divisi, daftarkan nomor seri unit, dan atur estafet pengerjaan.</span>
             </div>
             <span class="trk-code">${esc(d.tracking_code)}</span>
           </div>
 
           <div class="three">
-            <label class="field">Divisi Layanan MCS
+            <label class="field">Divisi Layanan
               <select name="division" data-trk-field="division">
                 ${DIV_LIST.map(dv => `<option value="${esc(dv[0])}" ${d.division === dv[0] ? 'selected' : ''}>${esc(dv[0])}</option>`).join('')}
               </select>
             </label>
-            <label class="field">Kategori / Ruang Lingkup Spesifik<input name="category" data-trk-field="category" value="${esc(d.category)}" placeholder="Kalibrasi Massa / Pengadaan Chiller / K3"></label>
-            <label class="field">Kode Tracking Perusahaan (Otomatis/Kustom)<input name="tracking_code" data-trk-field="tracking_code" value="${esc(d.tracking_code)}" required></label>
+            <label class="field">Kategori / Ruang Lingkup<input name="category" data-trk-field="category" value="${esc(d.category)}" placeholder="Kalibrasi / Pengadaan / K3"></label>
+            <label class="field">Kode Tracking<input name="tracking_code" data-trk-field="tracking_code" value="${esc(d.tracking_code)}" required></label>
           </div>
 
           <div class="three">
-            <label class="field">Nama Perusahaan Pelanggan<input name="client_name" data-trk-field="client_name" value="${esc(d.client_name)}" placeholder="PT. Contoh Industri" required></label>
-            <label class="field">Nama PIC Pelanggan<input name="pic_name" data-trk-field="pic_name" value="${esc(d.pic_name)}" placeholder="Bpk. Ahmad"></label>
-            <label class="field">Nomor WhatsApp PIC (Notifikasi Otomatis)<input name="pic_wa" data-trk-field="pic_wa" value="${esc(d.pic_wa)}" placeholder="628123456789"></label>
+            <label class="field">Perusahaan Pelanggan<input name="client_name" data-trk-field="client_name" value="${esc(d.client_name)}" placeholder="PT. Contoh Industri" required></label>
+            <label class="field">Nama PIC<input name="pic_name" data-trk-field="pic_name" value="${esc(d.pic_name)}" placeholder="Bpk. Ahmad"></label>
+            <label class="field">WhatsApp PIC<input name="pic_wa" data-trk-field="pic_wa" value="${esc(d.pic_wa)}" placeholder="628123456789"></label>
           </div>
 
-          <h4 class="sec">Daftar Unit &amp; Nomor Seri (Multi Serial Number dalam 1 Kode Tracking)</h4>
+          <h4 class="sec">Unit &amp; Nomor Seri</h4>
           <div style="display:grid;gap:10px">${itemRows}</div>
-          <div><button type="button" class="btn ghost sm" data-act="trk-add-item">${ic('plus', 16)} Tambah Baris Unit &amp; Nomor Seri (SN)</button></div>
+          <div><button type="button" class="btn ghost sm" data-act="trk-add-item">${ic('plus', 15)} Tambah Unit / SN</button></div>
 
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px solid var(--line)">
-            <h4 class="sec" style="border:0;padding:0;margin:0">Dynamic Step Builder (Estafet Tahapan Kerja &amp; Gate QC)</h4>
+            <h4 class="sec" style="border:0;padding:0;margin:0">Tahapan Kerja (Estafet &amp; Gate QC)</h4>
             <div style="display:flex;gap:8px">
-              <button type="button" class="btn ghost sm" data-act="trk-load-tpl">${ic('refresh', 16)} Muat Template Default Divisi</button>
-              <button type="button" class="btn ghost sm" data-act="trk-add-step">${ic('plus', 16)} Tambah Tahapan (Step)</button>
+              <button type="button" class="btn ghost sm" data-act="trk-load-tpl">${ic('refresh', 15)} Muat Template</button>
+              <button type="button" class="btn ghost sm" data-act="trk-add-step">${ic('plus', 15)} Tambah Tahap</button>
             </div>
           </div>
           <div class="step-builder">${stepRows}</div>
 
-          <h4 class="sec">Pengiriman, Nomor Resi &amp; Sertifikat Digital (PDF / BAST)</h4>
+          <h4 class="sec">Pengiriman &amp; Sertifikat</h4>
           <div class="three">
-            <label class="field">Nama Kurir / Ekspedisi<input data-trk-field="courier" value="${esc(d.courier)}" placeholder="JNE Trucking / Armada MCS"></label>
-            <label class="field">Nomor Resi Pengiriman<input data-trk-field="receipt_no" value="${esc(d.receipt_no)}" placeholder="Isi nomor resi jika sudah dikirim"></label>
-            <label class="field">Nomor Sertifikat / BAST<input data-trk-field="cert_no" value="${esc(d.cert_no)}" placeholder="CERT/MCS-CAL/2026/105"></label>
+            <label class="field">Kurir / Ekspedisi<input data-trk-field="courier" value="${esc(d.courier)}" placeholder="Armada MCS / Ekspedisi"></label>
+            <label class="field">Nomor Resi<input data-trk-field="receipt_no" value="${esc(d.receipt_no)}" placeholder="-"></label>
+            <label class="field">No. Sertifikat / BAST<input data-trk-field="cert_no" value="${esc(d.cert_no)}" placeholder="CERT/MCS/2026/001"></label>
           </div>
           <div class="two">
-            <label class="field">Tanggal Jatuh Tempo Re-Kalibrasi Berikutnya (Pengingat H-30)<input type="date" data-trk-field="valid_until" value="${esc(d.valid_until)}"></label>
-            <label class="field">Unggah File PDF Sertifikat / BAST (Opsional — atau gunakan Generator PDF MCS)
+            <label class="field">Berlaku Hingga<input type="date" data-trk-field="valid_until" value="${esc(d.valid_until)}"></label>
+            <label class="field">Unggah Sertifikat PDF (Opsional)
               <input type="file" accept="application/pdf" data-fx="trk-cert-pdf">
-              ${d.cert_url ? `<small style="color:#047857;font-weight:700">✓ File PDF tersimpan (${Math.round(d.cert_url.length / 1024)} KB)</small>` : `<small class="hint">Jika dikosongkan, sistem otomatis menyediakan Sertifikat / BAST Digital resmi berlogo MCS.</small>`}
+              ${d.cert_url ? `<small style="color:#047857;font-weight:600">File PDF tersimpan (${Math.round(d.cert_url.length / 1024)} KB)</small>` : `<small class="hint">Kosongkan untuk memakai generator Sertifikat Digital MCS.</small>`}
             </label>
           </div>
 
           <div class="a-save">
-            <button type="submit" class="btn primary">${ic('check', 18)} Simpan Order &amp; Aktifkan Tracking</button>
+            <button type="submit" class="btn primary">${ic('check', 17)} Simpan Order</button>
             <button type="button" class="btn ghost" data-act="trk-sub" data-v="list">Batal</button>
           </div>
-        </form>`;
+        </form></div>`;
     }
 
     if (trkState.adminSub === 'staff'){
-      const userRows = (TRACKING.users || []).map((u, idx) => `
-        <div class="bitem">
-          <div class="bitem-info">
-            <b>${esc(u.name)} <span class="trk-badge ${u.role === 'ADMIN' ? 'st-ACTIVE' : u.role === 'QC' ? 'qc' : 'st-IN_PROGRESS'}">${esc(u.role)}</span></b>
-            <small>Email: ${esc(u.email)} · Divisi: ${esc(u.division)} · WA: ${esc(u.wa)}</small>
+      const userRows = (TRACKING.users || []).map(u => `
+        <div class="ord-row">
+          <div class="ord-row-info">
+            <b>${esc(u.name)} <span class="trk-badge" style="margin-left:6px">${esc(u.role)}</span></b>
+            <span class="trk-sub">${esc(u.email)} · ${esc(u.division)} · WA: ${esc(u.wa)}</span>
           </div>
-          <div class="bitem-act">
-            <button type="button" class="btn ghost sm" data-act="trk-role" data-uid="${esc(u.id)}">Buka Portal Akun Ini</button>
-          </div>
+          <button type="button" class="btn ghost sm" data-act="trk-role" data-uid="${esc(u.id)}">Buka Portal</button>
         </div>`).join('');
 
-      return roleHeader + subTabs + `
-        <div class="trk-card">
-          <div class="trk-head">
-            <div>
-              <h3>Manajemen Akun Staf, Pekerja &amp; Petugas QC</h3>
-              <p class="hint">Klik "Buka Portal Akun Ini" atau gunakan tombol di bar atas untuk mensimulasikan tampilan antrean kerja masing-masing staf.</p>
-            </div>
-            <button type="button" class="btn ghost sm" data-act="trk-reset-demo">${ic('refresh', 16)} Reset Data Simulasi Demo Awal</button>
+      return `<div class="trk-admin">${roleHeader}${subTabs}
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div><h3 style="margin:0">Akun Staf, Pekerja &amp; QC</h3><span class="trk-sub">Kelola pekerja penerima estafet tugas dan petugas Gate QC.</span></div>
+          <button type="button" class="btn ghost sm" data-act="trk-reset-demo">${ic('refresh', 15)} Reset Data Demo</button>
+        </div>
+        <div class="ord-list">${userRows}</div>
+        <form id="trk-add-user-form" style="padding-top:12px;border-top:1px solid var(--line);display:grid;gap:10px">
+          <h4 style="margin:0">Tambah Akun Baru</h4>
+          <div class="three">
+            <label class="field">Nama &amp; Jabatan<input name="name" required placeholder="Contoh: Dedi Kurniawan (Teknisi)"></label>
+            <label class="field">Peran
+              <select name="role">
+                <option value="WORKER">Pekerja (Teknisi / Gudang)</option>
+                <option value="QC">Petugas Gate QC</option>
+                <option value="ADMIN">Super Admin</option>
+              </select>
+            </label>
+            <label class="field">Divisi
+              <select name="division">
+                ${DIV_LIST.map(d => `<option value="${esc(d[0])}">${esc(d[0])}</option>`).join('')}
+                <option value="Quality Control">Quality Control</option>
+              </select>
+            </label>
           </div>
-          <div class="blist">${userRows}</div>
-          <form id="trk-add-user-form" style="padding-top:12px;border-top:1px solid var(--line);display:grid;gap:10px">
-            <h4>Tambah Akun Pekerja / Petugas QC Baru</h4>
-            <div class="three">
-              <label class="field">Nama Lengkap &amp; Jabatan<input name="name" required placeholder="Contoh: Dedi Kurniawan (Teknisi Suhu)"></label>
-              <label class="field">Peran (Role)
-                <select name="role">
-                  <option value="WORKER">Pekerja (Teknisi Lab / Staf Gudang)</option>
-                  <option value="QC">Petugas Quality Control (Gate QC)</option>
-                  <option value="ADMIN">Super Admin / Admin CS</option>
-                </select>
-              </label>
-              <label class="field">Divisi Spesialisasi
-                <select name="division">
-                  ${DIV_LIST.map(d => `<option value="${esc(d[0])}">${esc(d[0])}</option>`).join('')}
-                  <option value="Quality Control (Gate QC)">Quality Control (Gate QC)</option>
-                </select>
-              </label>
-            </div>
-            <div class="two">
-              <label class="field">Email Login<input type="email" name="email" required placeholder="dedi@mcs.co.id"></label>
-              <label class="field">Nomor WhatsApp (Penerima Notifikasi Tugas)<input name="wa" value="6285974008882" required></label>
-            </div>
-            <div><button type="submit" class="btn primary sm">${ic('plus', 16)} Tambah Akun Staf</button></div>
-          </form>
-        </div>`;
+          <div class="two">
+            <label class="field">Email<input type="email" name="email" required placeholder="dedi@mcs.co.id"></label>
+            <label class="field">Nomor WhatsApp<input name="wa" value="6285974008882" required></label>
+          </div>
+          <div><button type="submit" class="btn primary sm">${ic('plus', 15)} Tambah Akun</button></div>
+        </form>
+      </div>`;
     }
 
-    // DEFAULT ADMIN SUB: MONITORING & ORDER LIST
-    const qcAlerts = [];
-    const recalAlerts = [];
-    orders.forEach(o => {
-      const qcStep = (o.steps || []).find(s => s.is_qc_gate && s.status === 'ACTIVE');
-      if (qcStep) qcAlerts.push({ order: o, step: qcStep });
-      if (o.valid_until){
-        const diffDays = Math.ceil((new Date(o.valid_until) - new Date()) / 86400000);
-        if (diffDays <= 45) recalAlerts.push({ order: o, days: diffDays });
-      }
-    });
+    const qcOrders = orders.filter(o => o.status === 'WAITING_QC' || (o.steps || []).some(s => s.is_qc_gate && s.status === 'ACTIVE'));
+    const recalOrders = orders.filter(o => o.valid_until && Math.ceil((new Date(o.valid_until) - new Date()) / 86400000) <= 45);
+    const shownOrders = trkState.adminFilter === 'qc' ? qcOrders : trkState.adminFilter === 'recal' ? recalOrders : orders;
 
-    const orderCards = orders.map(o => {
+    const orderRows = shownOrders.map(o => {
       const st = o.steps || [];
       const done = st.filter(s => s.status === 'DONE').length;
       const curStep = st.find(s => s.status === 'ACTIVE' || s.status === 'REWORK');
       const snList = (o.items || []).map(i => i.serial_number).join(', ');
       const waClientUrl = 'https://wa.me/' + waDigits(o.pic_wa || WA_DEFAULT) + '?text=' + encodeURIComponent(
-        `Halo ${o.pic_name || o.client_name}, terima kasih telah mempercayakan layanan ${o.division} kepada *${brand()}*.\n\n` +
-        `📌 *Kode Tracking:* ${o.tracking_code}\n` +
-        `🔧 *Unit & SN:* ${snList}\n` +
-        `📊 *Status Saat Ini:* ${STATUS_LABEL[o.status] || o.status} (${done}/${st.length} Tahap)\n` +
-        (o.receipt_no && o.receipt_no !== '-' ? `🚚 *Kurir & Resi:* ${o.courier} (${o.receipt_no})\n` : '') +
-        `\nPantau progres, foto bukti QC, dan unduh sertifikat secara live di:\n${location.origin + location.pathname}#/tracking/${o.tracking_code}`
+        `Halo ${o.pic_name || o.client_name}, info progres layanan ${o.division} dari ${brand()}:\n` +
+        `Kode Tracking: ${o.tracking_code}\n` +
+        `Unit & SN: ${snList}\n` +
+        `Status: ${STATUS_LABEL[o.status] || o.status} (${done}/${st.length} Tahap)\n` +
+        (o.receipt_no && o.receipt_no !== '-' ? `Kurir & Resi: ${o.courier} (${o.receipt_no})\n` : '') +
+        `Link Lacak: ${location.origin + location.pathname}#/tracking/${o.tracking_code}`
       );
       return `
-        <div class="bitem" style="align-items:flex-start">
-          <div class="bitem-info" style="flex:1;min-width:260px;gap:5px">
+        <div class="ord-row">
+          <div class="ord-row-info">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span class="trk-code" style="font-size:16.5px">${esc(o.tracking_code)}</span>
+              <b style="font-family:ui-monospace,monospace;font-size:15px">${esc(o.tracking_code)}</b>
               <span class="trk-badge st-${esc(o.status)}">${esc(STATUS_LABEL[o.status] || o.status)}</span>
-              <small style="color:var(--muted);font-weight:600">${esc(o.division)}</small>
+              <span class="trk-sub">${esc(o.division)}</span>
             </div>
-            <div><b>${esc(o.client_name)}</b> · PIC: ${esc(o.pic_name || '-')} (${esc(o.pic_wa || '-')})</div>
-            <small><b>Unit &amp; Nomor Seri (${(o.items || []).length}):</b> ${esc(snList || '-')}</small>
-            <small><b>Posisi Tahapan (${done}/${st.length}):</b> ${curStep ? `Step #${curStep.step_no} — ${esc(curStep.title)} (${esc(userById(curStep.assigned_user_id).name)})` : '✓ Seluruh Tahapan & Final QC Selesai'}</small>
+            <div><b>${esc(o.client_name)}</b> <span class="trk-sub">· SN: ${esc(snList || '-')}</span></div>
+            <div class="trk-sub">${curStep ? `Posisi: Tahap ${curStep.step_no} (${esc(curStep.title)}) — ${esc(userById(curStep.assigned_user_id).name)}` : `Selesai (${done}/${st.length} tahap) · Jatuh tempo: ${esc(o.valid_until || '-')}`}</div>
           </div>
-          <div class="bitem-act" style="flex-wrap:wrap">
-            <a class="btn ghost sm" href="#/tracking/${encodeURIComponent(o.tracking_code)}">${ic('search', 15)} Lihat Tracking</a>
-            <button type="button" class="btn ghost sm" data-act="trk-edit-order" data-id="${esc(o.id)}">${ic('edit', 15)} Edit / Resi</button>
-            <button type="button" class="btn ghost sm" data-act="trk-qr-print" data-id="${esc(o.id)}">${ic('image', 15)} Stiker QR</button>
-            <button type="button" class="btn ghost sm" data-act="trk-cert" data-id="${esc(o.id)}">${ic('filecheck', 15)} Sertifikat</button>
-            <a class="btn primary sm" href="${waClientUrl}" target="_blank" rel="noopener">${ic('chat', 15)} Kirim WA Klien</a>
+          <div class="ord-row-act">
+            <a class="btn ghost sm" href="#/tracking/${encodeURIComponent(o.tracking_code)}">Lacak</a>
+            <button type="button" class="btn ghost sm" data-act="trk-edit-order" data-id="${esc(o.id)}">Edit</button>
+            <button type="button" class="btn ghost sm" data-act="trk-qr-print" data-id="${esc(o.id)}">QR</button>
+            <button type="button" class="btn ghost sm" data-act="trk-cert" data-id="${esc(o.id)}">PDF</button>
+            <a class="btn primary sm" href="${waClientUrl}" target="_blank" rel="noopener">WA Klien</a>
           </div>
         </div>`;
     }).join('');
 
-    return roleHeader + subTabs + `
+    return `<div class="trk-admin">${roleHeader}${subTabs}
       <div class="kpi-row">
-        <div class="kpi-card"><b>${orders.length}</b><span>Total Order Terdaftar</span></div>
-        <div class="kpi-card"><b>${inProg}</b><span>Order Sedang Dikerjakan</span></div>
-        <div class="kpi-card"><b style="color:#d97706">${waitQc}</b><span>Antrean Gate QC (Incoming/Outgoing)</span></div>
-        <div class="kpi-card"><b style="color:#059669">${doneOrd}</b><span>Lolos QC &amp; Siap Kirim / Selesai</span></div>
+        <div class="kpi-card"><b>${orders.length}</b><span>Total Order</span></div>
+        <div class="kpi-card"><b>${inProg}</b><span>Sedang Dikerjakan</span></div>
+        <div class="kpi-card"><b>${waitQc}</b><span>Menunggu Gate QC</span></div>
+        <div class="kpi-card"><b>${doneOrd}</b><span>Siap Kirim / Selesai</span></div>
       </div>
 
-      ${qcAlerts.length ? `
-        <div class="trk-card" style="margin-bottom:14px;border-color:#f59e0b">
-          <h4 style="margin:0;color:#b45309;display:flex;align-items:center;gap:8px">${ic('shield', 18)} Peringatan Antrean Gate QC (${qcAlerts.length} Order Menunggu Verifikasi QC)</h4>
-          <div class="blist">
-            ${qcAlerts.map(a => `
-              <div class="bitem">
-                <div class="bitem-info">
-                  <b>${esc(a.order.tracking_code)} — ${esc(a.order.client_name)}</b>
-                  <small>Menunggu: <b>Step #${a.step.step_no} (${esc(a.step.title)})</b> oleh ${esc(userById(a.step.assigned_user_id).name)}</small>
-                </div>
-                <button type="button" class="btn primary sm" data-act="trk-role" data-uid="${esc(a.step.assigned_user_id)}">${ic('shield', 15)} Buka Panel Gate QC &amp; Periksa</button>
-              </div>`).join('')}
-          </div>
-        </div>` : ''}
-
-      ${recalAlerts.length ? `
-        <div class="trk-card" style="margin-bottom:14px">
-          <h4 style="margin:0;display:flex;align-items:center;gap:8px">${ic('bell', 18)} Pengingat Otomatis Re-Kalibrasi / Masa Berlaku K3 (H-30)</h4>
-          <div class="blist">
-            ${recalAlerts.map(r => {
-              const reminderWa = 'https://wa.me/' + waDigits(r.order.pic_wa || WA_DEFAULT) + '?text=' + encodeURIComponent(
-                `Halo ${r.order.pic_name || r.order.client_name}, pengingat ramah dari *${brand()}*: masa berlaku sertifikat untuk order *${r.order.tracking_code}* (${(r.order.items || []).map(i => i.serial_number).join(', ')}) akan jatuh tempo pada *${r.order.valid_until}*. Hubungi kami untuk penjadwalan re-kalibrasi/inspeksi berkala.`
-              );
-              return `
-                <div class="bitem">
-                  <div class="bitem-info">
-                    <b>${esc(r.order.client_name)} (${esc(r.order.tracking_code)})</b>
-                    <small>Jatuh Tempo: <b>${esc(r.order.valid_until)}</b> (${r.days <= 0 ? 'Sudah jatuh tempo' : r.days + ' hari lagi'})</small>
-                  </div>
-                  <a class="btn ghost sm" href="${reminderWa}" target="_blank" rel="noopener">${ic('chat', 15)} Kirim Pengingat WA</a>
-                </div>`;
-            }).join('')}
-          </div>
-        </div>` : ''}
-
-      <div class="trk-card">
-        <div class="trk-head">
-          <div>
-            <h3>Daftar Order Aktif &amp; Riwayat Tracking</h3>
-            <p class="hint">Kelola seluruh order lintas 4 divisi (Calibration, Procurement, Safety K3, dan IT Service).</p>
-          </div>
-          <button type="button" class="btn primary sm" data-act="trk-new-order">${ic('plus', 16)} Buat Order Baru</button>
+      <div class="trk-toolbar">
+        <div class="trk-filters">
+          <button type="button" class="fchip" data-act="trk-filter" data-v="all" aria-pressed="${trkState.adminFilter === 'all'}">Semua Order (${orders.length})</button>
+          <button type="button" class="fchip" data-act="trk-filter" data-v="qc" aria-pressed="${trkState.adminFilter === 'qc'}">Perlu Pemeriksaan QC (${qcOrders.length})</button>
+          <button type="button" class="fchip" data-act="trk-filter" data-v="recal" aria-pressed="${trkState.adminFilter === 'recal'}">Pengingat Re-Kalibrasi (${recalOrders.length})</button>
         </div>
-        <div class="blist">${orderCards || '<p class="hint">Belum ada order terdaftar.</p>'}</div>
-      </div>`;
+      </div>
+
+      <div class="ord-list">${orderRows || '<p class="hint" style="padding:16px 0">Tidak ada order pada filter ini.</p>'}</div>
+    </div>`;
   }
 
   /* ---- Portal Kerja Mobile: Pekerja (Teknisi Lab / Staf Gudang) ---- */
@@ -3247,91 +3202,76 @@
       });
     });
 
-    const cards = activeTasks.map(({ order, step, idx }) => {
-      const snList = (order.items || []).map(i => `${i.item_name} (${i.serial_number})`).join(' · ');
-      const photosHtml = (step.photos || []).map((ph, pi) => `
-        <div class="trk-pthumb" title="Asli ${ph.origKb} KB -> Kompresi ${ph.compKb} KB">
+    const cards = activeTasks.map(({ order, step }) => {
+      const snList = (order.items || []).map(i => i.serial_number).join(', ');
+      const photosHtml = (step.photos || []).map(ph => `
+        <div class="trk-pthumb" title="Asli ${ph.origKb} KB -> ${ph.compKb} KB">
           <img src="${esc(ph.s)}" alt="">
-          <span>${ph.compKb} KB (-${Math.max(1, Math.round((1 - ph.compKb / Math.max(1, ph.origKb)) * 100))}%)</span>
+          <span>${ph.compKb} KB</span>
         </div>`).join('');
       return `
-        <div class="trk-card" style="border:2px solid ${step.status === 'REWORK' ? '#e63946' : 'var(--accent)'}">
-          <div class="trk-head">
+        <div class="task-item">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
             <div>
-              <small style="color:var(--muted);font-weight:700">${esc(order.division)} · ${esc(order.client_name)}</small>
-              <div class="trk-code">${esc(order.tracking_code)} — Step #${step.step_no}: ${esc(step.title)}</div>
-              <small><b>Unit &amp; SN:</b> ${esc(snList)}</small>
+              <div class="trk-sub">${esc(order.division)} · ${esc(order.client_name)} · SN: ${esc(snList)}</div>
+              <b style="font-size:16px">${esc(order.tracking_code)} — Tahap ${step.step_no}: ${esc(step.title)}</b>
             </div>
-            <span class="trk-badge st-${esc(step.status)}">${step.status === 'REWORK' ? '⚠️ REVISI DARI QC (REWORK)' : 'GILIRAN ANDA (AKTIF)'}</span>
+            <span class="trk-badge st-${esc(step.status)}">${step.status === 'REWORK' ? 'Perlu Revisi (Rework)' : 'Tugas Aktif'}</span>
           </div>
 
           ${step.status === 'REWORK' && step.qc_rework_reason ? `
             <div class="rework-alert">
-              <b>Catatan Revisi Internal dari Petugas QC:</b><br>${esc(step.qc_rework_reason)}
-              <div style="font-size:11.5px;opacity:.8;margin-top:3px">*Catatan ini bersifat internal dan tidak ditampilkan di halaman tracking pelanggan.</div>
+              <b>Catatan Revisi QC (Internal):</b> ${esc(step.qc_rework_reason)}
             </div>` : ''}
 
-          <div style="background:var(--surface-2);padding:12px 14px;border-radius:12px;border:1px solid var(--line)">
-            <b>Instruksi Kerja Admin:</b>
-            <p style="margin:4px 0 8px;font-size:14px">${esc(step.instruction)}</p>
+          <div class="task-steps">
             <label class="cbx">
               <input type="checkbox" data-act="trk-w-check" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" ${step.checked ? 'checked' : ''}>
-              <span>Saya telah melaksanakan seluruh instruksi kerja pada tahapan ini sesuai SOP</span>
+              <span><b>1. Checklist SOP:</b> ${esc(step.instruction)}</span>
             </label>
-          </div>
-
-          <label class="field">Catatan Lapangan / Hasil Pengerjaan
-            <textarea rows="2" data-trk-wnote="${esc(order.id)}|${esc(step.id)}" placeholder="Tulis hasil pengukuran, kondisi unit, atau catatan pengerjaan...">${esc(step.worker_note || '')}</textarea>
-          </label>
-
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-              <b style="font-size:14px">Dokumentasi Foto Bukti Kerja (Auto-Kompresi 1280px · 150–300 KB)</b>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:13.5px"><b>2. Foto Bukti Kerja</b> <span class="trk-sub">(otomatis dikompres ke 150–300 KB)</span></span>
               <label class="btn ghost sm" style="cursor:pointer">
-                ${ic('upload', 16)} Ambil / Unggah Foto Bukti
+                ${ic('upload', 15)} Unggah Foto
                 <input type="file" accept="image/*" capture="environment" data-fx="trk-step-photo" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" hidden>
               </label>
             </div>
-            <div class="trk-sphotos">${photosHtml || '<span class="hint">Belum ada foto bukti pada tahapan ini. Unggah minimal 1 foto bukti kerja.</span>'}</div>
+            ${photosHtml ? `<div class="trk-sphotos">${photosHtml}</div>` : ''}
+            <label class="field"><b>3. Catatan Lapangan</b>
+              <textarea rows="2" data-trk-wnote="${esc(order.id)}|${esc(step.id)}" placeholder="Tulis hasil pengerjaan atau kondisi alat...">${esc(step.worker_note || '')}</textarea>
+            </label>
           </div>
 
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line)">
-            <small class="hint">Setelah diselesaikan, sistem otomatis membuka kunci <b>Step #${step.step_no + 1}</b>.</small>
-            <button type="button" class="btn primary" data-act="trk-complete-step" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('check', 18)} Selesaikan Step &amp; Estafetkan</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="trk-sub">Menyelesaikan tahap ini akan membuka kunci Tahap #${step.step_no + 1}.</span>
+            <button type="button" class="btn primary sm" data-act="trk-complete-step" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('check', 16)} Selesaikan Tahap</button>
           </div>
         </div>`;
     }).join('');
 
     const historyRows = doneTasks.map(({ order, step }) => `
-      <div class="bitem">
-        <div class="bitem-info">
-          <b>${esc(order.tracking_code)} — Step #${step.step_no}: ${esc(step.title)}</b>
-          <small>${esc(order.client_name)} · Selesai: ${esc(step.completed_at)} · ${(step.photos || []).length} foto terkompresi</small>
+      <div class="ord-row">
+        <div class="ord-row-info">
+          <b>${esc(order.tracking_code)} — Tahap ${step.step_no}: ${esc(step.title)}</b>
+          <span class="trk-sub">${esc(order.client_name)} · Selesai ${esc(step.completed_at)}</span>
         </div>
-        <a class="btn ghost sm" href="#/tracking/${encodeURIComponent(order.tracking_code)}">Lihat di Tracking</a>
+        <a class="btn ghost sm" href="#/tracking/${encodeURIComponent(order.tracking_code)}">Lihat</a>
       </div>`).join('');
 
     return `
-      <div style="display:grid;gap:14px">
-        <div class="trk-card">
-          <div class="trk-head">
-            <div>
-              <h3>Portal Kerja Mobile — Antrean Tugas Aktif (${activeTasks.length})</h3>
-              <p class="hint">Hanya menampilkan tahapan yang sudah terbuka gilirannya untuk akun <b>${esc(worker.name)}</b>.</p>
-            </div>
-            <button type="button" class="btn ghost sm" data-act="trk-scan">${ic('image', 16)} Scan QR Unit</button>
-          </div>
-          ${cards || '<p class="hint">Tidak ada antrean tugas aktif saat ini. Seluruh tugas Anda telah selesai atau masih menunggu tahapan sebelumnya.</p>'}
-        </div>
-        <div class="trk-card">
-          <h4>Riwayat Tahapan yang Telah Anda Selesaikan (${doneTasks.length})</h4>
-          <div class="blist">${historyRows || '<p class="hint">Belum ada riwayat tugas selesai.</p>'}</div>
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div><h3 style="margin:0">Antrean Tugas Aktif (${activeTasks.length})</h3><span class="trk-sub">Hanya tugas yang sudah masuk giliran Anda yang dapat dikerjakan.</span></div>
+        <button type="button" class="btn ghost sm" data-act="trk-scan">${ic('image', 15)} Scan QR Unit</button>
+      </div>
+      <div>${cards || '<p class="hint">Tidak ada antrean tugas aktif saat ini.</p>'}</div>
+      <div style="padding-top:12px;border-top:1px solid var(--line)">
+        <h4 style="margin:0 0 8px">Riwayat Selesai (${doneTasks.length})</h4>
+        <div class="ord-list">${historyRows || '<p class="hint" style="padding:10px 0">Belum ada riwayat tugas selesai.</p>'}</div>
       </div>`;
   }
 
   /* ---- Portal Petugas Quality Control (Gate Incoming & Outgoing QC) ---- */
-  function qcPortalView(qcUser){
+  function qcPortalView(){
     const activeGates = [];
     (TRACKING.orders || []).forEach(ord => {
       (ord.steps || []).forEach((st, idx) => {
@@ -3341,67 +3281,54 @@
 
     const gateCards = activeGates.map(({ order, step, idx }) => {
       const prevStep = idx > 0 ? order.steps[idx - 1] : null;
-      const snList = (order.items || []).map(i => `${i.item_name} [${i.serial_number}]`).join(' · ');
+      const snList = (order.items || []).map(i => i.serial_number).join(', ');
       const photosHtml = (step.photos || []).map(ph => `
         <div class="trk-pthumb">
           <img src="${esc(ph.s)}" alt="">
           <span>${ph.compKb} KB</span>
         </div>`).join('');
       return `
-        <div class="trk-card" style="border:2px solid #8b5cf6">
-          <div class="trk-head">
+        <div class="task-item">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
             <div>
-              <span class="trk-badge qc">${ic('shield', 14)} GATE ${step.qc_type === 'incoming' ? 'INCOMING QC (SAAT MASUK)' : 'OUTGOING QC (SEBELUM KIRIM)'}</span>
-              <div class="trk-code" style="margin-top:4px">${esc(order.tracking_code)} — ${esc(step.title)}</div>
-              <small><b>Klien:</b> ${esc(order.client_name)} · <b>Daftar Unit &amp; SN:</b> ${esc(snList)}</small>
+              <div class="trk-sub">${esc(order.client_name)} · SN: ${esc(snList)}</div>
+              <b style="font-size:16px">${esc(order.tracking_code)} — ${esc(step.title)}</b>
             </div>
-            <span class="trk-badge st-WAITING_QC">Menunggu Keputusan QC</span>
+            <span class="trk-badge st-WAITING_QC">${step.qc_type === 'incoming' ? 'Gate Incoming QC' : 'Gate Outgoing QC'}</span>
           </div>
 
-          ${prevStep ? `
-            <div style="background:var(--surface-2);padding:10px 13px;border-radius:12px;border:1px solid var(--line);font-size:13.5px">
-              <b>Hasil Tahap Sebelumnya (Step #${prevStep.step_no} — ${esc(userById(prevStep.assigned_user_id).name)}):</b><br>
-              <span>${esc(prevStep.worker_note || 'Selesai tanpa catatan tambahan.')}</span>
-            </div>` : ''}
+          ${prevStep ? `<div class="trk-note"><b>Hasil Tahap Sebelumnya (${esc(userById(prevStep.assigned_user_id).name)}):</b> ${esc(prevStep.worker_note || 'Selesai.')}</div>` : ''}
 
-          <label class="cbx">
-            <input type="checkbox" data-act="trk-w-check" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" ${step.checked ? 'checked' : ''}>
-            <span>Saya telah memverifikasi kesesuaian Nomor Seri (SN), kelengkapan fisik, dan standar mutu layanan (${esc(step.instruction)})</span>
-          </label>
-
-          <label class="field">Catatan Pemeriksaan QC / Alasan Rework (Jika Dikembalikan ke Pekerja)
-            <textarea rows="2" data-trk-wnote="${esc(order.id)}|${esc(step.id)}" placeholder="Tulis catatan hasil verifikasi QC atau alasan revisi jika dikembalikan (Rework)...">${esc(step.worker_note || '')}</textarea>
-          </label>
-
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-              <b style="font-size:14px">Foto Bukti Pemeriksaan Gate QC (Auto-Kompresi)</b>
+          <div class="task-steps">
+            <label class="cbx">
+              <input type="checkbox" data-act="trk-w-check" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" ${step.checked ? 'checked' : ''}>
+              <span><b>1. Verifikasi QC:</b> ${esc(step.instruction)}</span>
+            </label>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:13.5px"><b>2. Foto Bukti QC</b></span>
               <label class="btn ghost sm" style="cursor:pointer">
-                ${ic('upload', 16)} Unggah Foto Bukti QC
+                ${ic('upload', 15)} Unggah Foto QC
                 <input type="file" accept="image/*" capture="environment" data-fx="trk-step-photo" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" hidden>
               </label>
             </div>
-            <div class="trk-sphotos">${photosHtml || '<span class="hint">Unggah foto segel QC / bukti pemeriksaan unit.</span>'}</div>
+            ${photosHtml ? `<div class="trk-sphotos">${photosHtml}</div>` : ''}
+            <label class="field"><b>3. Catatan QC / Alasan Revisi (jika Rework)</b>
+              <textarea rows="2" data-trk-wnote="${esc(order.id)}|${esc(step.id)}" placeholder="Tulis hasil pemeriksaan QC atau alasan revisi...">${esc(step.worker_note || '')}</textarea>
+            </label>
           </div>
 
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line)">
-            ${prevStep ? `<button type="button" class="btn ghost" style="border-color:#e63946;color:#e63946" data-act="trk-qc-rework" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('close', 18)} REWORK (Kembalikan ke Step #${prevStep.step_no})</button>` : '<span></span>'}
-            <button type="button" class="btn primary" data-act="trk-complete-step" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('check', 18)} PASS — Lolos Gate QC &amp; Lanjutkan</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            ${prevStep ? `<button type="button" class="btn ghost sm" style="border-color:#e63946;color:#e63946" data-act="trk-qc-rework" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('close', 15)} Rework ke Tahap #${prevStep.step_no}</button>` : '<span></span>'}
+            <button type="button" class="btn primary sm" data-act="trk-complete-step" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('check', 16)} Lolos QC (Pass)</button>
           </div>
         </div>`;
     }).join('');
 
     return `
-      <div class="trk-card">
-        <div class="trk-head">
-          <div>
-            <h3>Panel Gate Quality Control (Incoming &amp; Outgoing QC)</h3>
-            <p class="hint">Periksa kesesuaian Nomor Seri (SN), kelengkapan alat, dan akurasi sertifikat. Pilih <b>PASS</b> untuk meloloskan atau <b>REWORK</b> untuk mengembalikan ke pekerja sebelumnya.</p>
-          </div>
-          <span class="trk-badge qc">${activeGates.length} Antrean Gate QC</span>
-        </div>
-        ${gateCards || '<p class="hint">Seluruh antrean Gate QC telah selesai diperiksa.</p>'}
-      </div>`;
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div><h3 style="margin:0">Antrean Gate Quality Control (${activeGates.length})</h3><span class="trk-sub">Verifikasi kesesuaian SN &amp; kualitas sebelum order dilanjutkan atau dikirim.</span></div>
+      </div>
+      <div>${gateCards || '<p class="hint">Tidak ada antrean Gate QC saat ini.</p>'}</div>`;
   }
 
   /* ====== Router ====== */
