@@ -288,7 +288,7 @@
   ];
 
   const PAGES = [
-    ['','Beranda'],['layanan','Layanan'],['portofolio','Portofolio'],['berita','Berita'],['keunggulan','Keunggulan'],
+    ['','Beranda'],['tracking','Lacak Order'],['layanan','Layanan'],['portofolio','Portofolio'],['berita','Berita'],['keunggulan','Keunggulan'],
     ['alur','Alur kerja'],['kontak','Kontak']
   ];
 
@@ -329,7 +329,7 @@
   }
   if (!hasBackendApi) {
     try {
-      const localDemo = localStorage.getItem('fss_demo_data_v6');
+      const localDemo = localStorage.getItem('fss_demo_data_v7');
       if (localDemo) DATA = Object.assign({}, DATA, JSON.parse(localDemo));
     } catch (e) {}
   }
@@ -395,7 +395,7 @@
   let pf = { cat: 'all', page: 0 };
   const nf = { page: 0 };
   let gal = { id: null, i: 0 };
-  const adm = { authed: sess.get('fss_admin') === '1', tab: 'porto', sel: null, draft: null, isNew: false, delArm: false, tries: 0, lockUntil: 0, repIdx: 0, pendingReviews: [] };
+  const adm = { authed: sess.get('fss_admin') === '1', tab: 'tracking', sel: null, draft: null, isNew: false, delArm: false, tries: 0, lockUntil: 0, repIdx: 0, pendingReviews: [] };
 
   const cover = p => (p.photos && p.photos[0]) ? p.photos[0] : svgPhoto('image', '#0f6b6a', '#0a2e2f', 'Belum ada foto', 0);
   const thumbOf = x => x.t || x.s;
@@ -1299,7 +1299,7 @@
       r *= .7;
     }
   }
-  const TABS = [['porto', 'Portofolio'], ['layanan', 'Layanan'], ['scope', 'Ruang lingkup'], ['berita', 'Berita'], ['ulasan', 'Ulasan'], ['google', 'Google Maps'], ['pengaturan', 'Pengaturan'], ['pin', 'Keamanan']];
+  const TABS = [['tracking', 'Tracking & QC'], ['porto', 'Portofolio'], ['layanan', 'Layanan'], ['scope', 'Ruang lingkup'], ['berita', 'Berita'], ['ulasan', 'Ulasan'], ['google', 'Google Maps'], ['pengaturan', 'Pengaturan'], ['pin', 'Keamanan']];
   const HINTS = {
     porto: 'Pilih proyek di daftar untuk mengubah data dan fotonya, atau tambahkan proyek baru.',
     layanan: 'Pilih layanan untuk mengubah nama, penjelasan, atau ikonnya. Anda juga bisa menambah layanan baru atau menghapusnya.',
@@ -1392,23 +1392,23 @@
     return t === 'porto' ? editor() : t === 'layanan' ? (adm.draft.pageTxt ? pgEditor() : svcEditor()) : t === 'scope' ? scopeEditor() : t === 'ulasan' ? rEditor() : newsEditor();
   }
   function adminPanel(){
-    const t = adm.tab, solo = t === 'pin' || t === 'google' || t === 'pengaturan';
+    const t = adm.tab, solo = t === 'pin' || t === 'google' || t === 'pengaturan' || t === 'tracking';
     return `
       <section class="page" style="justify-content:flex-start">
         <div class="a-top">
-          <div><h2>Kelola website</h2><p class="a-sub">Atur portofolio, layanan, ruang lingkup kalibrasi, dan berita.</p></div>
+          <div><h2>Kelola website &amp; Tracking System</h2><p class="a-sub">Kelola order tracking, estafet pekerja, gate QC, portofolio, layanan, dan pengaturan.</p></div>
           <div class="a-actions"><button class="btn ghost sm" data-act="alogout">${ic('logout', 18)} Keluar</button></div>
         </div>
         <div class="atabs" role="tablist" aria-label="Bagian admin">
           ${TABS.map(x => `<button class="fchip" role="tab" data-act="atab" data-v="${x[0]}" aria-pressed="${t === x[0]}">${x[1]}${x[0] === 'ulasan' ? `<span class="review-tab-count" ${adm.pendingReviews.length ? '' : 'hidden'}>${adm.pendingReviews.length || ''}</span>` : ''}</button>`).join('')}
         </div>
         <div class="a-msg" id="amsg" role="status"></div>
-        <div class="a-grid ${solo ? 'solo' : ''}">
+        <div class="a-grid ${solo ? 'solo' : ''}" style="${t === 'tracking' ? 'max-width:100%;width:100%' : ''}">
           ${solo ? '' : `<div class="a-side">
             ${ADDLAB[t] ? `<button class="btn primary sm" data-act="anew">${ic('plus', 18)} ${ADDLAB[t]}</button>` : ''}
             <div class="a-list">${adminList() || '<p class="hint">Belum ada data.</p>'}</div>
           </div>`}
-          <div class="a-edit">${adminBody()}</div>
+          <div class="a-edit">${t === 'tracking' ? adminTrackingPanel() : adminBody()}</div>
         </div>
       </section>`;
   }
@@ -1439,7 +1439,7 @@
   function buildHtml(){
     const css = document.getElementById('fss-css').textContent;
     const app = document.getElementById('fss-app').textContent;
-    const json = JSON.stringify({ v: 2, pinHash: pinHash, projects: P, services: SERVICES, scope: SCOPE, news: N, reviews: REVIEWS, google: GOOGLE, settings: SETTINGS, pages: PAGES_TXT }).replace(/</g, '\\u003c');
+    const json = JSON.stringify({ v: 2, pinHash: pinHash, projects: P, services: SERVICES, scope: SCOPE, news: N, reviews: REVIEWS, google: GOOGLE, settings: SETTINGS, pages: PAGES_TXT, tracking: TRACKING }).replace(/</g, '\\u003c');
     return '<!doctype html>\n<html lang="id">\n<head>\n<meta charset="utf-8">\n'
       + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
       + '<title>' + esc(brand()) + ' | Kalibrasi Onsite &amp; Inlab</title>\n'
@@ -1450,7 +1450,7 @@
       + '<script id="fss-app">' + app + SCRIPT_END + '\n</body>\n</html>';
   }
   async function persist(){
-    const dataObj = { v: 2, pinHash: pinHash, projects: P, services: SERVICES, scope: SCOPE, news: N, reviews: REVIEWS, google: GOOGLE, settings: SETTINGS, pages: PAGES_TXT };
+    const dataObj = { v: 2, pinHash: pinHash, projects: P, services: SERVICES, scope: SCOPE, news: N, reviews: REVIEWS, google: GOOGLE, settings: SETTINGS, pages: PAGES_TXT, tracking: TRACKING };
     if (hasBackendApi) {
       try {
         const res = await fetch('/api/data', {
@@ -1468,7 +1468,7 @@
         return { ok: false, msg: 'Koneksi ke server gagal. Perubahan belum disimpan.' };
       }
     }
-    try { localStorage.setItem('fss_demo_data_v6', JSON.stringify(dataObj)); } catch (e) {}
+    try { localStorage.setItem('fss_demo_data_v7', JSON.stringify(dataObj)); } catch (e) {}
     const html = buildHtml();
     if (new Blob([html]).size > 15.5 * 1048576) return { ok: false, msg: 'Ukuran halaman melebihi batas 16 MB. Hapus beberapa foto.' };
     let art = null;
@@ -1486,8 +1486,8 @@
       return { ok: false, msg: 'Gagal menyimpan. Coba lagi.' };
     }
   }
-  const snapshot = () => ({ P: P.slice(), S: SERVICES.slice(), SC: Object.assign({}, SCOPE), N: N.slice(), RV: REVIEWS.slice(), G: GOOGLE, ST: SETTINGS, PT: PAGES_TXT, pin: pinHash });
-  const restore = s => { P = s.P; SERVICES = s.S; SCOPE = s.SC; N = s.N; REVIEWS = s.RV; GOOGLE = s.G; SETTINGS = s.ST; PAGES_TXT = s.PT; pinHash = s.pin; };
+  const snapshot = () => ({ P: P.slice(), S: SERVICES.slice(), SC: Object.assign({}, SCOPE), N: N.slice(), RV: REVIEWS.slice(), G: GOOGLE, ST: SETTINGS, PT: PAGES_TXT, TRK: JSON.parse(JSON.stringify(TRACKING)), pin: pinHash });
+  const restore = s => { P = s.P; SERVICES = s.S; SCOPE = s.SC; N = s.N; REVIEWS = s.RV; GOOGLE = s.G; SETTINGS = s.ST; PAGES_TXT = s.PT; TRACKING = s.TRK; pinHash = s.pin; };
   function busy(){ const b = document.getElementById('asave'); if (b){ b.dataset.t = b.textContent; b.disabled = true; b.textContent = 'Menyimpan...'; } }
   async function commit(mutate, okMsg, after){
     const snap = snapshot(); busy(); mutate();
@@ -1712,6 +1712,215 @@
           setTimeout(() => { adm.delArm = false; if (t.isConnected) t.textContent = 'Hapus'; }, 4000);
         } else { adm.delArm = false; await delCurrent(); }
         break;
+      case 'trk-pick':
+        trkState.query = t.dataset.code || '';
+        if (parse().key === 'tracking') location.hash = '#/tracking/' + encodeURIComponent(trkState.query);
+        rerender(true);
+        break;
+      case 'trk-zoom': {
+        let lb = document.getElementById('lb');
+        if (!lb){
+          lb = document.createElement('div'); lb.id = 'lb'; lb.className = 'lb';
+          lb.innerHTML = `<button class="lbx" data-act="lbclose" aria-label="Tutup">${ic('close', 24)}</button><img id="lbimg" alt="">`;
+          document.body.appendChild(lb);
+        }
+        const img = document.getElementById('lbimg');
+        if (img) img.src = t.dataset.src || '';
+        lb.classList.add('open');
+        break;
+      }
+      case 'trk-cert': openCertPrint(t.dataset.id); break;
+      case 'trk-qr-print': printQrSticker(t.dataset.id); break;
+      case 'trk-scan': {
+        let m = document.getElementById('sm');
+        if (!m){ m = document.createElement('div'); m.id = 'sm'; m.className = 'modal'; document.body.appendChild(m); }
+        m.innerHTML = `
+          <div class="mbox narrow" role="dialog" aria-modal="true" aria-label="Scan QR Code Alat">
+            <div class="mhead">
+              <div><h2>Scan QR Code Stiker Alat</h2><p>Pilih kode QR unit di bawah atau ketik Nomor Seri / Kode Tracking</p></div>
+              <button class="round" data-act="mclose" aria-label="Tutup">${ic('close', 22)}</button>
+            </div>
+            <div style="display:grid;gap:12px">
+              <p class="hint">Simulasi kamera QR scanner pada perangkat ini — pilih salah satu stiker QR unit yang terdaftar di bawah untuk membuka detail pelacakannya secara instan:</p>
+              <div style="display:grid;gap:8px">
+                ${(TRACKING.orders || []).map(o => `
+                  <button type="button" class="bitem" style="text-align:left;cursor:pointer;width:100%" data-act="trk-scan-pick" data-code="${esc(o.tracking_code)}">
+                    <div style="display:flex;gap:12px;align-items:center">
+                      <div style="background:#fff;padding:4px;border-radius:8px;border:1px solid #cbd5e1">${qrSvg(o.tracking_code, 48)}</div>
+                      <div class="bitem-info">
+                        <b>${esc(o.tracking_code)} — ${esc(o.client_name)}</b>
+                        <small>SN: ${esc((o.items || []).map(i => i.serial_number).join(', '))}</small>
+                      </div>
+                    </div>
+                  </button>`).join('')}
+              </div>
+            </div>
+          </div>`;
+        m.classList.add('open');
+        break;
+      }
+      case 'trk-scan-pick': {
+        closeModal();
+        trkState.query = t.dataset.code || '';
+        if (parse().key !== 'admin') location.hash = '#/tracking/' + encodeURIComponent(trkState.query);
+        rerender(true);
+        break;
+      }
+      case 'trk-role':
+        trkState.roleUserId = t.dataset.uid || 'u_admin';
+        setMsg('');
+        rerender(true);
+        break;
+      case 'trk-sub':
+        trkState.adminSub = t.dataset.v || 'list';
+        setMsg('');
+        rerender(true);
+        break;
+      case 'trk-new-order':
+        trkState.editOrderId = null;
+        trkState.orderDraft = newOrderDraft();
+        trkState.adminSub = 'form';
+        setMsg('');
+        rerender(true);
+        break;
+      case 'trk-edit-order': {
+        const ord = (TRACKING.orders || []).find(o => o.id === t.dataset.id);
+        if (!ord) break;
+        trkState.editOrderId = ord.id;
+        trkState.orderDraft = newOrderDraft(ord);
+        trkState.adminSub = 'form';
+        setMsg('');
+        rerender(true);
+        break;
+      }
+      case 'trk-add-item':
+        if (trkState.orderDraft){
+          trkState.orderDraft.items.push({ id: 'it_' + Date.now().toString(36), item_name: '', brand_model: '', serial_number: '' });
+          rerender(true);
+        }
+        break;
+      case 'trk-del-item':
+        if (trkState.orderDraft && trkState.orderDraft.items.length > 1){
+          trkState.orderDraft.items.splice(i, 1);
+          rerender(true);
+        }
+        break;
+      case 'trk-add-step':
+        if (trkState.orderDraft){
+          const st = trkState.orderDraft.steps;
+          st.push({
+            id: 'st_' + Date.now().toString(36) + '_' + st.length,
+            step_no: st.length + 1,
+            title: '',
+            instruction: '',
+            assigned_user_id: 'u_tech1',
+            is_qc_gate: false,
+            qc_type: '',
+            status: st.length === 0 ? 'ACTIVE' : 'LOCKED',
+            checked: false,
+            worker_note: '',
+            qc_rework_reason: '',
+            completed_at: '',
+            photos: []
+          });
+          rerender(true);
+        }
+        break;
+      case 'trk-del-step':
+        if (trkState.orderDraft && trkState.orderDraft.steps.length > 1){
+          trkState.orderDraft.steps.splice(i, 1);
+          trkState.orderDraft.steps.forEach((s, k) => { s.step_no = k + 1; });
+          rerender(true);
+        }
+        break;
+      case 'trk-step-move':
+        if (trkState.orderDraft){
+          const st = trkState.orderDraft.steps, j = i + (+t.dataset.d);
+          if (j >= 0 && j < st.length){
+            [st[i], st[j]] = [st[j], st[i]];
+            st.forEach((s, k) => { s.step_no = k + 1; });
+            rerender(true);
+          }
+        }
+        break;
+      case 'trk-load-tpl':
+        if (trkState.orderDraft){
+          const div = trkState.orderDraft.division;
+          const tpl = (TRACKING.templates && TRACKING.templates[div]) || [];
+          trkState.orderDraft.steps = tpl.map((x, k) => ({
+            id: 'st_' + Date.now().toString(36) + '_' + k,
+            step_no: k + 1,
+            title: x.title,
+            instruction: x.instruction,
+            assigned_user_id: x.assigned_user_id,
+            is_qc_gate: !!x.is_qc_gate,
+            qc_type: x.qc_type || '',
+            status: k === 0 ? 'ACTIVE' : 'LOCKED',
+            checked: false,
+            worker_note: '',
+            qc_rework_reason: '',
+            completed_at: '',
+            photos: []
+          }));
+          rerender(true);
+          setMsg('Template tahapan default divisi ' + div + ' berhasil dimuat.');
+        }
+        break;
+      case 'trk-w-check': {
+        const ord = (TRACKING.orders || []).find(o => o.id === t.dataset.oid);
+        const st = ord && (ord.steps || []).find(s => s.id === t.dataset.sid);
+        if (st){ st.checked = !!t.checked; }
+        break;
+      }
+      case 'trk-complete-step': {
+        const ord = (TRACKING.orders || []).find(o => o.id === t.dataset.oid);
+        const idx = ord ? (ord.steps || []).findIndex(s => s.id === t.dataset.sid) : -1;
+        if (!ord || idx < 0) break;
+        const st = ord.steps[idx];
+        if (!st.checked){ setMsg('Centang dulu checkbox konfirmasi pelaksanaan instruksi kerja / verifikasi QC.', true); break; }
+        let nextUser = null, nextStep = null;
+        await commit(() => {
+          st.status = 'DONE';
+          st.qc_rework_reason = '';
+          st.completed_at = nowStamp();
+          if (idx + 1 < ord.steps.length){
+            nextStep = ord.steps[idx + 1];
+            nextStep.status = 'ACTIVE';
+            nextUser = userById(nextStep.assigned_user_id);
+          }
+          syncOrderStatus(ord);
+        }, 'Tahapan selesai & diestafetkan.', () => {});
+        const msg = nextStep && nextUser
+          ? `Step #${st.step_no} (${st.title}) selesai! Step #${nextStep.step_no} (${nextStep.title}) otomatis dibuka untuk ${nextUser.name}.`
+          : `Seluruh tahapan & Final Gate QC untuk ${ord.tracking_code} telah selesai! Order siap dikirim.`;
+        setMsg(msg);
+        rerender(true);
+        break;
+      }
+      case 'trk-qc-rework': {
+        const ord = (TRACKING.orders || []).find(o => o.id === t.dataset.oid);
+        const idx = ord ? (ord.steps || []).findIndex(s => s.id === t.dataset.sid) : -1;
+        if (!ord || idx <= 0) break;
+        const curStep = ord.steps[idx], prevStep = ord.steps[idx - 1];
+        const reason = String(curStep.worker_note || '').trim() || prompt('Masukkan alasan revisi / Rework untuk pekerja sebelumnya:', 'Perlu pengecekan ulang data / kelengkapan unit.');
+        if (!reason) break;
+        await commit(() => {
+          curStep.status = 'LOCKED';
+          curStep.checked = false;
+          prevStep.status = 'REWORK';
+          prevStep.checked = false;
+          prevStep.qc_rework_reason = reason;
+          syncOrderStatus(ord);
+        }, 'Tugas dikembalikan (Rework).', () => {});
+        setMsg(`Order ${ord.tracking_code} dikembalikan (REWORK) ke Step #${prevStep.step_no} (${userById(prevStep.assigned_user_id).name}).`);
+        rerender(true);
+        break;
+      }
+      case 'trk-reset-demo':
+        await commit(() => { TRACKING = seedTracking(); }, 'Data simulasi demo berhasil direset.', () => {});
+        setMsg('Data simulasi demo berhasil dikembalikan ke kondisi awal.');
+        rerender(true);
+        break;
     }
   });
   document.addEventListener('change', async e => {
@@ -1723,6 +1932,39 @@
       setMsg('Memproses logo...');
       try { adm.draft.logo = { s: await makeLogo(files[0]) }; setMsg(''); drawLogoPrev(); applyAll(adm.draft); }
       catch (err) { setMsg('Logo tidak dapat dibaca. Gunakan file PNG, JPG, WebP, atau SVG.', true); }
+      return;
+    }
+    if (t.dataset.fx === 'trk-step-photo'){
+      if (!files.length) return;
+      const ord = (TRACKING.orders || []).find(o => o.id === t.dataset.oid);
+      const st = ord && (ord.steps || []).find(s => s.id === t.dataset.sid);
+      if (!st) return;
+      setMsg('Mengompres foto bukti secara otomatis (maks 1280px, target 150–300 KB)...');
+      try {
+        const comp = await compressStepPhoto(files[0]);
+        const curU = userById(trkState.roleUserId);
+        await commit(() => {
+          st.photos = st.photos || [];
+          st.photos.push({ id: 'ph_' + Date.now().toString(36), s: comp.s, origKb: comp.origKb, compKb: comp.compKb, by: curU.name, at: nowStamp() });
+        }, 'Foto bukti terkompresi tersimpan.', () => {});
+        setMsg(`Foto bukti berhasil dikompresi: Asli ${comp.origKb} KB → ${comp.compKb} KB (Hemat ${Math.max(1, Math.round((1 - comp.compKb / Math.max(1, comp.origKb)) * 100))}%).`);
+        rerender(true);
+      } catch (err) {
+        setMsg('Gagal memproses foto bukti. Gunakan file JPG, PNG, atau WebP.', true);
+      }
+      return;
+    }
+    if (t.dataset.fx === 'trk-cert-pdf'){
+      if (!files.length || !trkState.orderDraft) return;
+      const f = files[0];
+      if (f.size > 3 * 1024 * 1024){ setMsg('Ukuran file PDF maksimal 3 MB untuk demo.', true); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        trkState.orderDraft.cert_url = String(reader.result || '');
+        setMsg('File PDF Sertifikat / BAST siap disimpan bersama order.');
+        rerender(true);
+      };
+      reader.readAsDataURL(f);
       return;
     }
     if (!files.length || !adm.draft || !adm.draft.photos) return;
@@ -1743,6 +1985,63 @@
       applyAll(adm.draft);
       return;
     }
+    if (el.dataset && el.dataset.trkField && trkState.orderDraft){
+      const k = el.dataset.trkField;
+      trkState.orderDraft[k] = el.value;
+      if (k === 'division'){
+        const dv = DIV_LIST.find(x => x[0] === el.value) || DIV_LIST[0];
+        const seq = String((TRACKING.orders || []).length + 1).padStart(3, '0');
+        if (!trkState.editOrderId){
+          trkState.orderDraft.tracking_code = `${dv[2]}-2026-${seq}`;
+          trkState.orderDraft.cert_no = `CERT/${dv[2]}/2026/${seq}`;
+        }
+        const tpl = (TRACKING.templates && TRACKING.templates[dv[0]]) || [];
+        if (tpl.length && !trkState.editOrderId){
+          trkState.orderDraft.steps = tpl.map((x, idx) => ({
+            id: 'st_' + Date.now().toString(36) + '_' + idx,
+            step_no: idx + 1,
+            title: x.title,
+            instruction: x.instruction,
+            assigned_user_id: x.assigned_user_id,
+            is_qc_gate: !!x.is_qc_gate,
+            qc_type: x.qc_type || '',
+            status: idx === 0 ? 'ACTIVE' : 'LOCKED',
+            checked: false,
+            worker_note: '',
+            qc_rework_reason: '',
+            completed_at: '',
+            photos: []
+          }));
+        }
+        rerender(true);
+      }
+      return;
+    }
+    if (el.dataset && el.dataset.trkItem != null && trkState.orderDraft){
+      const it = trkState.orderDraft.items[+el.dataset.trkItem];
+      if (it) it[el.dataset.k] = el.value;
+      return;
+    }
+    if (el.dataset && el.dataset.trkStep != null && trkState.orderDraft){
+      const st = trkState.orderDraft.steps[+el.dataset.trkStep];
+      if (st){
+        const k = el.dataset.k;
+        if (k === 'qc_type'){
+          st.qc_type = el.value;
+          st.is_qc_gate = Boolean(el.value);
+        } else {
+          st[k] = el.value;
+        }
+      }
+      return;
+    }
+    if (el.dataset && el.dataset.trkWnote){
+      const [oid, sid] = el.dataset.trkWnote.split('|');
+      const ord = (TRACKING.orders || []).find(o => o.id === oid);
+      const st = ord && (ord.steps || []).find(s => s.id === sid);
+      if (st) st.worker_note = el.value;
+      return;
+    }
     if (el.dataset && el.dataset.k && adm.draft && adm.draft.rows){ const r = adm.draft.rows[+el.dataset.r]; if (r) r[el.dataset.k] = el.value; return; }
     const f = el.form;
     if (!f || !adm.draft || !el.name || !['pform', 'lform', 'nform', 'rform', 'gform', 'pgform'].includes(f.id)) return;
@@ -1753,6 +2052,58 @@
   document.addEventListener('submit', async e => {
     const f = e.target;
     if (f.id === 'pinform'){ e.preventDefault(); await onPin(); }
+    else if (f.id === 'trk-search-form'){
+      e.preventDefault();
+      const q = (document.getElementById('trk-q') || {}).value || '';
+      trkState.query = q.trim();
+      location.hash = '#/tracking/' + encodeURIComponent(trkState.query);
+      rerender(true);
+    }
+    else if (f.id === 'trk-order-form'){
+      e.preventDefault();
+      const d = trkState.orderDraft;
+      if (!d || !String(d.client_name).trim() || !String(d.tracking_code).trim()){
+        setMsg('Nama perusahaan pelanggan dan Kode Tracking wajib diisi.', true);
+        return;
+      }
+      d.items = (d.items || []).filter(it => String(it.item_name || it.serial_number).trim());
+      if (!d.items.length){
+        setMsg('Tambahkan minimal 1 unit alat/barang beserta Nomor Seri (SN).', true);
+        return;
+      }
+      syncOrderStatus(d);
+      const copy = JSON.parse(JSON.stringify(d));
+      await commit(() => {
+        TRACKING.orders = TRACKING.orders || [];
+        const k = TRACKING.orders.findIndex(o => o.id === copy.id);
+        if (k >= 0) TRACKING.orders[k] = copy;
+        else TRACKING.orders.unshift(copy);
+      }, 'Order Tracking tersimpan.', () => {});
+      trkState.adminSub = 'list';
+      trkState.orderDraft = null;
+      setMsg(`Order ${copy.tracking_code} (${copy.client_name}) berhasil disimpan & diaktifkan.`);
+      rerender(true);
+    }
+    else if (f.id === 'trk-add-user-form'){
+      e.preventDefault();
+      const fd = new FormData(f);
+      const nu = {
+        id: 'u_' + Date.now().toString(36),
+        name: String(fd.get('name') || '').trim(),
+        role: String(fd.get('role') || 'WORKER'),
+        division: String(fd.get('division') || 'Calibration MCS'),
+        email: String(fd.get('email') || '').trim(),
+        wa: waDigits(fd.get('wa') || '6285974008882'),
+        active: true
+      };
+      if (!nu.name) return;
+      await commit(() => {
+        TRACKING.users = TRACKING.users || [];
+        TRACKING.users.push(nu);
+      }, 'Akun staf ditambahkan.', () => {});
+      setMsg(`Akun ${nu.name} (${nu.role}) berhasil ditambahkan.`);
+      rerender(true);
+    }
     else if (['pform', 'lform', 'sform', 'nform', 'rform', 'gform', 'wform', 'pgform'].includes(f.id)){ e.preventDefault(); await saveCurrent(); }
     else if (f.id === 'rateform'){
       e.preventDefault();
@@ -1839,6 +2190,7 @@
             <p class="lead">Kalibrasi On site dan in lab dengan standart ISO 17025, teknisi berpengalaman dan sertifikat akreditasi yang tertelusur.</p>
             <div class="cta-row">
               <a class="btn primary" href="${wa('Halo ' + brand() + ', saya ingin konsultasi kalibrasi.')}" target="_blank" rel="noopener">${ic('chat',20)} Konsultasi sekarang</a>
+              <a class="btn ghost on-deep" href="#/tracking">${ic('search',20)} Lacak Status Order</a>
               <a class="btn ghost on-deep" href="#/layanan">Lihat layanan</a>
             </div>
           </div>
@@ -1894,7 +2246,7 @@
       <section class="page">
         <div class="contact">
           <div class="c-left">
-            <h2>Butuh kalibrasi sekarang? Konsultasikan alat Anda hari ini.</h2>
+            <h2>Konsultasikan Kebutuhan Anda Hari Ini!</h2>
             <p class="sub">Respon cepat, konsultasi gratis, tanpa komitmen.</p>
             <div class="cta-row" style="margin:0">
               <a class="btn primary" href="${wa('Halo ' + brand() + ', saya ingin konsultasi kalibrasi.')}" target="_blank" rel="noopener">${ic('chat',20)} Konsultasi via WhatsApp</a>
@@ -1919,9 +2271,10 @@
             </label>
             <div class="field">Layanan
               <div class="pills">
-                <label><input type="radio" name="mode" value="onsite" checked><span>Onsite</span></label>
-                <label><input type="radio" name="mode" value="inlab"><span>Inlab</span></label>
-                <label><input type="radio" name="mode" value="belum tahu"><span>Belum tahu</span></label>
+                <label><input type="radio" name="mode" value="Kalibrasi" checked><span>Kalibrasi</span></label>
+                <label><input type="radio" name="mode" value="Pengadaan"><span>Pengadaan</span></label>
+                <label><input type="radio" name="mode" value="Service Maintenance"><span>Service Maintenance</span></label>
+                <label><input type="radio" name="mode" value="Konsultasi"><span>Konsultasi</span></label>
               </div>
             </div>
             <label class="field">Pesan<textarea name="pesan" placeholder="Jumlah dan jenis alat, lokasi, target waktu"></textarea></label>
@@ -1932,6 +2285,7 @@
   };
 
   views.portofolio = id => { const p = P.find(x => x.id === id); return p ? portoDetail(p) : portoList(); };
+  views.tracking = id => trackingPublicView(id);
   views.admin = () => adm.authed ? adminPanel() : pinGate();
   views.berita = id => { const n = N.find(x => x.id === id); return n ? newsDetail(n) : newsList(); };
 
@@ -1944,6 +2298,1112 @@
         <p>${s[2]}</p>
       </div>`).join('');
   }
+
+  /* ====== MCS Order, Calibration, Procurement, Safety & IT Tracking System ====== */
+  const DIV_LIST = [
+    ['Calibration MCS', 'Kalibrasi Onsite & Inlab (ISO 17025 / KAN)', 'MCS-CAL'],
+    ['Procurement MCS', 'Pengadaan Instrument, Alat Teknik & Mesin Pendingin', 'MCS-PRC'],
+    ['Safety MCS — Keselamatan Kerja (K3)', 'APAR, Hydrostatic Test SCBA/EEBA & Pelatihan K3', 'MCS-SFT'],
+    ['IT Service MCS', 'Landing Page, POS, SaaS, ERP & Sistem IT', 'MCS-ITS']
+  ];
+  const STATUS_LABEL = {
+    IN_PROGRESS: 'Sedang Dikerjakan',
+    WAITING_QC: 'Menunggu Pemeriksaan QC',
+    READY_TO_SHIP: 'Lolos QC · Siap Kirim',
+    COMPLETED: 'Selesai & Terkirim'
+  };
+  const STEP_LABEL = {
+    LOCKED: 'Menunggu Giliran (Terkunci)',
+    ACTIVE: 'Sedang Dikerjakan',
+    DONE: 'Selesai',
+    REWORK: 'Perlu Revisi Internal (Rework)'
+  };
+
+  function seedTracking(){
+    const p1 = svgPhoto('shield', '#1e3a5f', '#0f172a', 'Bukti Incoming QC & Cek SN', 0).s;
+    const p2 = svgPhoto('gauge', '#344e69', '#1e293b', 'Proses Kalibrasi Lab ISO 17025', 1).s;
+    const p3 = svgPhoto('box', '#0f5132', '#062e1e', 'Verifikasi Unit & Stok Gudang', 2).s;
+    const p4 = svgPhoto('award', '#344e69', '#0a1f44', 'Uji Tekanan & Segel Lolos QC', 0).s;
+    return {
+      users: [
+        { id: 'u_admin', name: 'Admin CS MCS', email: 'admin@mcs.co.id', wa: '6285974008882', role: 'ADMIN', division: 'Semua Divisi', active: true },
+        { id: 'u_tech1', name: 'Budi Santoso (Teknisi Lab)', email: 'teknisi@mcs.co.id', wa: '6285974008882', role: 'WORKER', division: 'Calibration & IT MCS', active: true },
+        { id: 'u_wh1', name: 'Andi Pratama (Staf Gudang & Teknik)', email: 'gudang@mcs.co.id', wa: '6285974008882', role: 'WORKER', division: 'Procurement & Safety MCS', active: true },
+        { id: 'u_qc1', name: 'Rina Wijaya (Inspector QC)', email: 'qc@mcs.co.id', wa: '6285974008882', role: 'QC', division: 'Quality Control (Gate QC)', active: true }
+      ],
+      templates: {
+        'Calibration MCS': [
+          { title: 'Penerimaan Alat & Incoming QC', instruction: 'Periksa fisik alat, kelengkapan aksesoris, dan kesesuaian Nomor Seri (SN) saat diterima.', assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'incoming' },
+          { title: 'Kondisioning & Pelaksanaan Kalibrasi', instruction: 'Lakukan kalibrasi sesuai metode standar ISO 17025 dengan kalibrator tertelusur KAN.', assigned_user_id: 'u_tech1', is_qc_gate: false, qc_type: '' },
+          { title: 'Perhitungan Ketidakpastian (MU) & Draft Sertifikat', instruction: 'Input data pembacaan, hitung nilai ketidakpastian (MU), dan siapkan lembar sertifikat.', assigned_user_id: 'u_tech1', is_qc_gate: false, qc_type: '' },
+          { title: 'Final Outgoing QC & Segel Kalibrasi', instruction: 'Verifikasi akurasi sertifikat, tempel stiker/segel kalibrasi QR, dan pastikan alat siap kirim.', assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'outgoing' }
+        ],
+        'Procurement MCS': [
+          { title: 'Verifikasi Spesifikasi PO & Penyiapan Unit', instruction: 'Siapkan unit instrumen/alat teknik/mesin pendingin sesuai spesifikasi Purchase Order.', assigned_user_id: 'u_wh1', is_qc_gate: false, qc_type: '' },
+          { title: 'Incoming QC & Uji Fungsi Unit', instruction: 'Periksa keaslian Nomor Seri (SN), kelengkapan modul, dan uji nyala/fungsi sebelum dikemas.', assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'incoming' },
+          { title: 'Packing Standar Industri & Outgoing QC', instruction: 'Kemas unit dengan pelindung aman, tempel label pengiriman, dan validasi kesiapan kirim.', assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'outgoing' }
+        ],
+        'Safety MCS — Keselamatan Kerja (K3)': [
+          { title: 'Penerimaan Tabung / Peralatan K3 & Incoming QC', instruction: 'Periksa kondisi fisik tabung APAR/SCBA/EEBA, katup, pressure gauge, dan nomor seri.', assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'incoming' },
+          { title: 'Refill APAR / Hydrostatic Test SCBA & EEBA', instruction: 'Lakukan pengisian media APAR atau uji hidrostatik tabung sesuai standar keselamatan K3.', assigned_user_id: 'u_wh1', is_qc_gate: false, qc_type: '' },
+          { title: 'Uji Tekanan Akhir & Final Outgoing QC K3', instruction: 'Pastikan tekanan kerja stabil, tidak ada kebocoran, pasang segel pin & label masa berlaku.', assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'outgoing' }
+        ],
+        'IT Service MCS': [
+          { title: 'Analisis Kebutuhan & Desain Arsitektur (UI/UX)', instruction: 'Finalisasi spesifikasi modul Landing Page / POS / SaaS / ERP bersama PIC klien.', assigned_user_id: 'u_tech1', is_qc_gate: false, qc_type: '' },
+          { title: 'Pengembangan Sistem & Integrasi Database', instruction: 'Implementasi fitur aplikasi, manajemen hak akses, dan konfigurasi server.', assigned_user_id: 'u_tech1', is_qc_gate: false, qc_type: '' },
+          { title: 'Quality Assurance (UAT Gate QC) & Go-Live', instruction: 'Uji fungsionalitas menyeluruh, keamanan data, dan serah terima akses produksi.', assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'outgoing' }
+        ]
+      },
+      orders: [
+        {
+          id: 'ord_1',
+          tracking_code: 'MCS-CAL-2026-001',
+          division: 'Calibration MCS',
+          category: 'Kalibrasi Alat Listrik, Dimensi & Tekanan',
+          client_name: 'PT. Petrokimia Nusantara',
+          pic_name: 'Bpk. Hendra Kusuma',
+          pic_wa: '6285974008882',
+          status: 'IN_PROGRESS',
+          created_at: '2026-11-18 09:15',
+          courier: 'Armada Onsite / Kurir Internal MCS',
+          receipt_no: '-',
+          cert_no: 'CERT/MCS-CAL/2026/104',
+          cert_url: '',
+          valid_until: '2027-11-18',
+          items: [
+            { id: 'it_1', item_name: 'Industrial True-RMS Multimeter', brand_model: 'Fluke 87V', serial_number: 'SN-MTR-8821' },
+            { id: 'it_2', item_name: 'Digital Vernier Caliper 0-150mm', brand_model: 'Mitutoyo CD-15AX', serial_number: 'SN-CAL-4410' },
+            { id: 'it_3', item_name: 'Stainless Pressure Gauge 0-16 Bar', brand_model: 'WIKA 232.50', serial_number: 'SN-PRG-1092' }
+          ],
+          steps: [
+            {
+              id: 'st_101', step_no: 1, title: 'Penerimaan Alat & Incoming QC',
+              instruction: 'Periksa fisik alat, kelengkapan probe/kabel, dan kesesuaian 3 Nomor Seri (SN) saat diterima di lab.',
+              assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'incoming', status: 'DONE', checked: true,
+              worker_note: 'Ketiga unit diterima lengkap beserta hardcase. Nomor seri SN-MTR-8821, SN-CAL-4410, dan SN-PRG-1092 sesuai form tanda terima.',
+              qc_rework_reason: '', completed_at: '2026-11-18 10:20',
+              photos: [{ id: 'ph_1', s: p1, origKb: 1840, compKb: 164, by: 'Rina Wijaya (Inspector QC)', at: '2026-11-18 10:19' }]
+            },
+            {
+              id: 'st_102', step_no: 2, title: 'Kondisioning & Pelaksanaan Kalibrasi',
+              instruction: 'Lakukan kalibrasi sesuai metode standar ISO 17025 pada suhu ruang 23±2°C dengan kalibrator tertelusur KAN.',
+              assigned_user_id: 'u_tech1', is_qc_gate: false, qc_type: '', status: 'DONE', checked: true,
+              worker_note: 'Pengujian 5 titik ukur tegangan/arus, panjang gauge block, dan deadweight tester selesai. Penyimpangan masih dalam batas toleransi.',
+              qc_rework_reason: '', completed_at: '2026-11-19 14:45',
+              photos: [{ id: 'ph_2', s: p2, origKb: 2150, compKb: 188, by: 'Budi Santoso (Teknisi Lab)', at: '2026-11-19 14:42' }]
+            },
+            {
+              id: 'st_103', step_no: 3, title: 'Perhitungan Ketidakpastian (MU) & Draft Sertifikat',
+              instruction: 'Input data pembacaan, hitung nilai ketidakpastian (MU), dan siapkan lembar sertifikat kalibrasi.',
+              assigned_user_id: 'u_tech1', is_qc_gate: false, qc_type: '', status: 'ACTIVE', checked: false,
+              worker_note: '', qc_rework_reason: '', completed_at: '', photos: []
+            },
+            {
+              id: 'st_104', step_no: 4, title: 'Final Outgoing QC & Segel Kalibrasi',
+              instruction: 'Verifikasi akurasi sertifikat, tempel stiker/segel kalibrasi QR, dan pastikan alat siap dikirim.',
+              assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'outgoing', status: 'LOCKED', checked: false,
+              worker_note: '', qc_rework_reason: '', completed_at: '', photos: []
+            }
+          ]
+        },
+        {
+          id: 'ord_2',
+          tracking_code: 'MCS-PRC-2026-002',
+          division: 'Procurement MCS',
+          category: 'Instrument Laboratory & Mesin Pendingin',
+          client_name: 'PT. Indofood Sukses Makmur Tbk',
+          pic_name: 'Ibu Dewi Lestari',
+          pic_wa: '6285974008882',
+          status: 'WAITING_QC',
+          created_at: '2026-11-19 11:00',
+          courier: 'Ekspedisi Kargo Industri',
+          receipt_no: '-',
+          cert_no: 'BAST/MCS-PRC/2026/052',
+          cert_url: '',
+          valid_until: '2027-11-19',
+          items: [
+            { id: 'it_21', item_name: 'Laboratory Pharmaceutical Chiller Showcase 1200L', brand_model: 'MCS-CoolPro 1200', serial_number: 'SN-CHL-9011' },
+            { id: 'it_22', item_name: 'Analytical Balance Precision 220g / 0.1mg', brand_model: 'Sartorius Entris II', serial_number: 'SN-BAL-3305' }
+          ],
+          steps: [
+            {
+              id: 'st_201', step_no: 1, title: 'Verifikasi Spesifikasi PO & Penyiapan Unit',
+              instruction: 'Siapkan unit Chiller Showcase 1200L dan Analytical Balance sesuai spesifikasi Purchase Order klien.',
+              assigned_user_id: 'u_wh1', is_qc_gate: false, qc_type: '', status: 'DONE', checked: true,
+              worker_note: 'Kedua unit sudah disiapkan di area staging gudang Surabaya lengkap dengan kartu garansi dan manual book.',
+              qc_rework_reason: '', completed_at: '2026-11-19 15:30',
+              photos: [{ id: 'ph_3', s: p3, origKb: 1960, compKb: 175, by: 'Andi Pratama (Staf Gudang & Teknik)', at: '2026-11-19 15:28' }]
+            },
+            {
+              id: 'st_202', step_no: 2, title: 'Incoming QC & Uji Fungsi Unit',
+              instruction: 'Periksa keaslian Nomor Seri (SN-CHL-9011 & SN-BAL-3305), kestabilan suhu kompresor chiller, dan kalibrasi internal timbangan.',
+              assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'incoming', status: 'ACTIVE', checked: false,
+              worker_note: '', qc_rework_reason: '', completed_at: '', photos: []
+            },
+            {
+              id: 'st_203', step_no: 3, title: 'Packing Kayu Standar Industri & Outgoing QC',
+              instruction: 'Kemas unit dengan palet kayu pelindung guncangan, tempel label QR, dan validasi kesiapan pengiriman.',
+              assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'outgoing', status: 'LOCKED', checked: false,
+              worker_note: '', qc_rework_reason: '', completed_at: '', photos: []
+            }
+          ]
+        },
+        {
+          id: 'ord_3',
+          tracking_code: 'MCS-SFT-2026-003',
+          division: 'Safety MCS — Keselamatan Kerja (K3)',
+          category: 'Hydrostatic Test SCBA & Refill APAR',
+          client_name: 'RSUD Dr. Soetomo Surabaya',
+          pic_name: 'Bpk. Arif Rahman (K3RS)',
+          pic_wa: '6285974008882',
+          status: 'COMPLETED',
+          created_at: '2026-11-15 08:30',
+          courier: 'Armada Delivery MCS Surabaya',
+          receipt_no: 'MCS-DLV-20261117-09',
+          cert_no: 'CERT/MCS-K3/2026/089',
+          cert_url: '',
+          valid_until: '2026-12-10',
+          items: [
+            { id: 'it_31', item_name: 'Self-Contained Breathing Apparatus (SCBA) Carbon Cylinder', brand_model: 'Dräger PSS 3000', serial_number: 'SN-SCBA-7701' },
+            { id: 'it_32', item_name: 'APAR Dry Chemical Powder 6 Kg (Lot 10 Tabung)', brand_model: 'Viking / MCS Safety', serial_number: 'SN-APAR-6612' }
+          ],
+          steps: [
+            {
+              id: 'st_301', step_no: 1, title: 'Penerimaan Tabung K3 & Incoming QC',
+              instruction: 'Periksa kondisi fisik tabung SCBA & APAR, valve, pressure gauge, dan nomor seri.',
+              assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'incoming', status: 'DONE', checked: true,
+              worker_note: 'Kondisi fisik tabung baik, tidak ada korosi struktural. Siap dilakukan uji hidrostatik dan pengisian ulang.',
+              qc_rework_reason: '', completed_at: '2026-11-15 11:10',
+              photos: [{ id: 'ph_31', s: p1, origKb: 1650, compKb: 152, by: 'Rina Wijaya (Inspector QC)', at: '2026-11-15 11:08' }]
+            },
+            {
+              id: 'st_302', step_no: 2, title: 'Refill APAR & Hydrostatic Test SCBA',
+              instruction: 'Lakukan uji tekan hidrostatik tabung SCBA pada 450 Bar dan pengisian media Dry Chemical Powder APAR.',
+              assigned_user_id: 'u_wh1', is_qc_gate: false, qc_type: '', status: 'DONE', checked: true,
+              worker_note: 'Uji hidrostatik SCBA lulus tanpa ekspansi berlebih. 10 tabung APAR telah diisi penuh dan diberi nitrogen bertekanan 15 Bar.',
+              qc_rework_reason: '', completed_at: '2026-11-16 16:00',
+              photos: [{ id: 'ph_32', s: p4, origKb: 2290, compKb: 194, by: 'Andi Pratama (Staf Gudang & Teknik)', at: '2026-11-16 15:55' }]
+            },
+            {
+              id: 'st_303', step_no: 3, title: 'Uji Tekanan Akhir & Final Outgoing QC K3',
+              instruction: 'Pastikan tekanan kerja stabil, tidak ada kebocoran, pasang segel pin & stiker sertifikat K3.',
+              assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'outgoing', status: 'DONE', checked: true,
+              worker_note: 'Seluruh unit lolos Outgoing QC. Stiker inspeksi K3 dan berita acara serah terima telah diterbitkan.',
+              qc_rework_reason: '', completed_at: '2026-11-17 09:40',
+              photos: [{ id: 'ph_33', s: p4, origKb: 1780, compKb: 161, by: 'Rina Wijaya (Inspector QC)', at: '2026-11-17 09:38' }]
+            }
+          ]
+        },
+        {
+          id: 'ord_4',
+          tracking_code: 'MCS-ITS-2026-004',
+          division: 'IT Service MCS',
+          category: 'POS, SaaS & Custom ERP System',
+          client_name: 'CV. Surya Niaga Utama',
+          pic_name: 'Bpk. Kevin Sanjaya',
+          pic_wa: '6285974008882',
+          status: 'IN_PROGRESS',
+          created_at: '2026-11-19 13:20',
+          courier: 'Cloud Deployment & Onsite Training',
+          receipt_no: '-',
+          cert_no: 'BAST/MCS-IT/2026/019',
+          cert_url: '',
+          valid_until: '2027-11-20',
+          items: [
+            { id: 'it_41', item_name: 'Lisensi & Source Deploy Cloud POS + Inventory ERP Multi-Cabang', brand_model: 'MCS Enterprise Web Suite', serial_number: 'SN-SAAS-2026' }
+          ],
+          steps: [
+            {
+              id: 'st_401', step_no: 1, title: 'Analisis Kebutuhan & Desain Arsitektur (UI/UX)',
+              instruction: 'Finalisasi spesifikasi modul POS kasir, sinkronisasi stok gudang, dan laporan laba-rugi.',
+              assigned_user_id: 'u_tech1', is_qc_gate: false, qc_type: '', status: 'DONE', checked: true,
+              worker_note: 'Blueprint database dan desain antarmuka kasir/admin telah disetujui PIC klien.',
+              qc_rework_reason: '', completed_at: '2026-11-19 17:00', photos: []
+            },
+            {
+              id: 'st_402', step_no: 2, title: 'Pengembangan Sistem & Integrasi Database',
+              instruction: 'Implementasi modul transaksi POS, manajemen stok multi-gudang, dan laporan keuangan real-time.',
+              assigned_user_id: 'u_tech1', is_qc_gate: false, qc_type: '', status: 'ACTIVE', checked: false,
+              worker_note: '', qc_rework_reason: '', completed_at: '', photos: []
+            },
+            {
+              id: 'st_403', step_no: 3, title: 'Quality Assurance (UAT Gate QC) & Go-Live',
+              instruction: 'Uji coba beban transaksi, keamanan login, dan pelatihan penggunaan sistem bersama klien.',
+              assigned_user_id: 'u_qc1', is_qc_gate: true, qc_type: 'outgoing', status: 'LOCKED', checked: false,
+              worker_note: '', qc_rework_reason: '', completed_at: '', photos: []
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  let TRACKING = (DATA.tracking && typeof DATA.tracking === 'object' && Array.isArray(DATA.tracking.orders))
+    ? DATA.tracking
+    : seedTracking();
+
+  const trkState = {
+    query: '',
+    tab: 'status', // 'status' | 'verify'
+    verifyQuery: '',
+    roleUserId: 'u_admin', // active user ID in portal ('u_admin', 'u_tech1', 'u_wh1', 'u_qc1')
+    adminSub: 'list', // 'list' | 'form' | 'staff'
+    editOrderId: null,
+    orderDraft: null,
+    workerTab: 'active' // 'active' | 'history'
+  };
+
+  function userById(uid){
+    return (TRACKING.users || []).find(u => u.id === uid) || { id: uid, name: 'Staf MCS', role: 'WORKER', wa: '6285974008882' };
+  }
+  function nowStamp(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+      + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function syncOrderStatus(ord){
+    const st = ord.steps || [];
+    if (!st.length){ ord.status = 'IN_PROGRESS'; return; }
+    if (st.every(s => s.status === 'DONE')){
+      ord.status = (ord.receipt_no && ord.receipt_no !== '-') ? 'COMPLETED' : 'READY_TO_SHIP';
+      return;
+    }
+    const act = st.find(s => s.status === 'ACTIVE' || s.status === 'REWORK');
+    if (act && act.is_qc_gate && act.status === 'ACTIVE') ord.status = 'WAITING_QC';
+    else ord.status = 'IN_PROGRESS';
+  }
+
+  /* ---- Deterministic SVG QR Code Generator ---- */
+  function qrSvg(text, size = 128){
+    const N = 21, grid = Array.from({ length: N }, () => Array(N).fill(0)), rsv = Array.from({ length: N }, () => Array(N).fill(false));
+    const finder = (r0, c0) => {
+      for (let r = -1; r <= 7; r++) for (let c = -1; c <= 7; c++){
+        const rr = r0 + r, cc = c0 + c;
+        if (rr < 0 || rr >= N || cc < 0 || cc >= N) continue;
+        rsv[rr][cc] = true;
+        if (r >= 0 && r <= 6 && c >= 0 && c <= 6 && (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4))) grid[rr][cc] = 1;
+      }
+    };
+    finder(0, 0); finder(0, N - 7); finder(N - 7, 0);
+    for (let i = 8; i < N - 8; i++){
+      rsv[6][i] = rsv[i][6] = true;
+      grid[6][i] = grid[i][6] = (i % 2 === 0) ? 1 : 0;
+    }
+    const str = String(text || 'MCS');
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    let idx = 0;
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++){
+      if (rsv[r][c]) continue;
+      const ch = str.charCodeAt(idx % str.length);
+      const bit = ((ch >> (idx % 7)) ^ ((h >>> ((r * N + c) % 24)) & 1) ^ ((r + c) % 2)) & 1;
+      grid[r][c] = bit;
+      idx++;
+    }
+    let rects = '';
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++){
+      if (grid[r][c]) rects += `<rect x="${c + 2}" y="${r + 2}" width="1" height="1"/>`;
+    }
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${N + 4} ${N + 4}" fill="#0f172a" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect width="${N + 4}" height="${N + 4}" fill="#ffffff" rx="2"/>${rects}</svg>`;
+  }
+
+  /* ---- Client-Side Auto-Compression (Maks 1280px, Target 150-300 KB) ---- */
+  async function compressStepPhoto(file){
+    if (!/^image\//.test(file.type)) throw new Error('Gunakan file gambar (JPG, PNG, atau WebP).');
+    const origKb = Math.max(1, Math.round(file.size / 1024));
+    const im = await loadImg(file);
+    const maxDim = 1280;
+    const r = Math.min(1, maxDim / Math.max(im.width || 1, im.height || 1));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(im.width * r));
+    c.height = Math.max(1, Math.round(im.height * r));
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(im, 0, 0, c.width, c.height);
+    let q = 0.78, dataUrl = c.toDataURL('image/jpeg', q);
+    while (dataUrl.length * 0.75 > 290 * 1024 && q > 0.42){
+      q -= 0.1;
+      dataUrl = c.toDataURL('image/jpeg', q);
+    }
+    const compKb = Math.max(1, Math.round((dataUrl.length * 0.75) / 1024));
+    return { s: dataUrl, origKb, compKb };
+  }
+
+  /* ---- Cetak Stiker QR Code & Sertifikat / BAST Digital ---- */
+  function printQrSticker(orderId){
+    const ord = (TRACKING.orders || []).find(o => o.id === orderId);
+    if (!ord) return;
+    const trackUrl = location.origin + location.pathname + '#/tracking/' + encodeURIComponent(ord.tracking_code);
+    const w = window.open('', '_blank', 'width=720,height=640');
+    if (!w) { alert('Izinkan pop-up browser untuk mencetak stiker QR Code.'); return; }
+    const itemsHtml = (ord.items || []).map(it => `
+      <div class="sticker">
+        <div class="s-head"><b>${esc(brand())}</b><span>${esc(ord.division)}</span></div>
+        <div class="s-body">
+          <div class="s-qr">${qrSvg(ord.tracking_code + '|' + it.serial_number, 118)}</div>
+          <div class="s-info">
+            <div class="s-code">${esc(ord.tracking_code)}</div>
+            <div><b>Unit:</b> ${esc(it.item_name)}</div>
+            <div><b>Model:</b> ${esc(it.brand_model || '-')}</div>
+            <div><b>Serial No (SN):</b> <code>${esc(it.serial_number)}</code></div>
+            <div><b>Klien:</b> ${esc(ord.client_name)}</div>
+            <div class="s-url">Scan QR atau cek di: #/tracking/${esc(ord.tracking_code)}</div>
+          </div>
+        </div>
+      </div>`).join('');
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Stiker QR - ${esc(ord.tracking_code)}</title>
+      <style>
+        body{font-family:system-ui,-apple-system,sans-serif;margin:20px;color:#0f172a;background:#f8fafc}
+        .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:12px 16px;background:#fff;border:1px solid #cbd5e1;border-radius:12px}
+        .btn{background:#e63946;color:#fff;border:0;padding:10px 18px;border-radius:999px;font-weight:700;cursor:pointer}
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+        .sticker{background:#fff;border:2px solid #344e69;border-radius:14px;padding:12px;break-inside:avoid}
+        .s-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #344e69;padding-bottom:6px;margin-bottom:10px;font-size:12px}
+        .s-head b{color:#344e69;font-size:14px}
+        .s-body{display:flex;gap:12px;align-items:center}
+        .s-info{font-size:12px;line-height:1.45}
+        .s-code{font-family:monospace;font-size:15px;font-weight:800;color:#e63946;margin-bottom:3px}
+        code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-weight:700}
+        .s-url{margin-top:4px;font-size:10.5px;color:#475569}
+        @media print{.bar{display:none}body{background:#fff;margin:0}}
+      </style></head><body>
+      <div class="bar">
+        <div><b>Cetak Stiker Label QR Code (${(ord.items || []).length} Unit)</b> — ${esc(ord.tracking_code)}</div>
+        <button class="btn" onclick="window.print()">Cetak Sekarang (Print / PDF)</button>
+      </div>
+      <div class="grid">${itemsHtml}</div>
+      </body></html>`);
+    w.document.close();
+  }
+
+  function openCertPrint(orderId){
+    const ord = (TRACKING.orders || []).find(o => o.id === orderId);
+    if (!ord) return;
+    if (ord.cert_url && ord.cert_url.startsWith('data:')){
+      const a = document.createElement('a');
+      a.href = ord.cert_url;
+      a.download = (ord.cert_no || ord.tracking_code).replace(/[^a-zA-Z0-9_-]/g, '_') + '.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
+    const w = window.open('', '_blank', 'width=860,height=760');
+    if (!w) { alert('Izinkan pop-up browser untuk membuka Sertifikat / BAST Digital.'); return; }
+    const isCal = ord.division.indexOf('Calibration') === 0;
+    const docTitle = isCal ? 'SERTIFIKAT KALIBRASI DIGITAL' : 'BERITA ACARA SERAH TERIMA (BAST) & LULUS QC';
+    const rows = (ord.items || []).map((it, k) => `<tr><td>${k + 1}</td><td><b>${esc(it.item_name)}</b></td><td>${esc(it.brand_model || '-')}</td><td><code>${esc(it.serial_number)}</code></td><td>LULUS / SESUAI STANDAR</td></tr>`).join('');
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${docTitle} - ${esc(ord.tracking_code)}</title>
+      <style>
+        body{font-family:system-ui,-apple-system,sans-serif;margin:24px;color:#0f172a;background:#f1f5f9}
+        .bar{max-width:780px;margin:0 auto 14px;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#fff;border-radius:12px;border:1px solid #cbd5e1}
+        .btn{background:#344e69;color:#fff;border:0;padding:10px 18px;border-radius:999px;font-weight:700;cursor:pointer}
+        .sheet{max-width:780px;margin:0 auto;background:#fff;border:3px double #344e69;border-radius:16px;padding:32px}
+        .top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #344e69;padding-bottom:16px;margin-bottom:20px}
+        .top h1{margin:0;font-size:20px;color:#344e69}
+        .top p{margin:4px 0 0;font-size:12.5px;color:#475569}
+        .title{text-align:center;margin:18px 0 22px}
+        .title h2{margin:0;font-size:21px;letter-spacing:.03em;color:#1e293b}
+        .title code{display:inline-block;margin-top:6px;background:#eef3f8;padding:4px 12px;border-radius:999px;font-weight:800;color:#344e69}
+        .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px;margin-bottom:18px;background:#f8fafc;padding:14px;border-radius:12px;border:1px solid #e2e8f0}
+        table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0 22px}
+        th,td{border:1px solid #cbd5e1;padding:9px 11px;text-align:left}
+        th{background:#344e69;color:#fff}
+        .foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:26px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12.5px}
+        @media print{.bar{display:none}body{background:#fff;margin:0}.sheet{border-width:2px}}
+      </style></head><body>
+      <div class="bar">
+        <div><b>${docTitle}</b> — ${esc(ord.cert_no || ord.tracking_code)}</div>
+        <button class="btn" onclick="window.print()">Unduh PDF / Cetak Sertifikat</button>
+      </div>
+      <div class="sheet">
+        <div class="top">
+          <div>
+            <h1>CV. MULTIDAYA CIPTA SOLUSI (MCS)</h1>
+            <p>General Trading · Calibration · Procurement · Service Maintenance &amp; Supplier<br>Surabaya · WhatsApp: 0859 7400 8882 · Email: headoffice@mcs.co.id</p>
+          </div>
+          <div>${qrSvg(ord.tracking_code, 84)}</div>
+        </div>
+        <div class="title">
+          <h2>${docTitle}</h2>
+          <code>No. Dokumen: ${esc(ord.cert_no || ('CERT/' + ord.tracking_code))}</code>
+        </div>
+        <div class="meta">
+          <div><b>Kode Tracking:</b> ${esc(ord.tracking_code)}</div>
+          <div><b>Divisi Layanan:</b> ${esc(ord.division)}</div>
+          <div><b>Perusahaan Klien:</b> ${esc(ord.client_name)}</div>
+          <div><b>PIC Pelanggan:</b> ${esc(ord.pic_name || '-')}</div>
+          <div><b>Tanggal Terbit:</b> ${esc((ord.created_at || '').slice(0, 10))}</div>
+          <div><b>Berlaku Hingga:</b> ${esc(ord.valid_until || '-')}</div>
+        </div>
+        <table>
+          <thead><tr><th>No</th><th>Nama Alat / Barang</th><th>Merek / Tipe</th><th>Nomor Seri (SN)</th><th>Hasil QC / Kalibrasi</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="font-size:12.5px;color:#334155;line-height:1.55">Dokumen ini diterbitkan secara resmi oleh sistem <b>MCS Tracking &amp; Quality Control</b>. Seluruh instrumen dan tahapan pengerjaan telah melewati pemeriksaan <i>Incoming QC</i> serta <i>Final Outgoing QC</i> mengacu pada standar ISO/IEC 17025 dan tertelusur ke standar nasional (KAN).</p>
+        <div class="foot">
+          <div><b>Status Verifikasi Digital:</b> <span style="color:#047857;font-weight:800">VALID &amp; TERVERIFIKASI</span><br>Kode Pelacakan Publik: <b>${esc(ord.tracking_code)}</b></div>
+          <div style="text-align:center">Surabaya, ${esc((ord.created_at || today()).slice(0, 10))}<br><b>Manager Teknis &amp; Quality Control</b><br><br><br><b>CV. Multidaya Cipta Solusi</b></div>
+        </div>
+      </div>
+      </body></html>`);
+    w.document.close();
+  }
+
+  /* ---- Pencarian Order berdasarkan Kode Tracking atau Serial Number (SN) ---- */
+  function findOrderByQuery(q){
+    const raw = String(q || '').trim().toLowerCase();
+    if (!raw) return null;
+    for (const ord of (TRACKING.orders || [])){
+      if (String(ord.tracking_code || '').toLowerCase() === raw || String(ord.cert_no || '').toLowerCase() === raw) return { order: ord, matchedSn: null };
+    }
+    for (const ord of (TRACKING.orders || [])){
+      const hit = (ord.items || []).find(it => String(it.serial_number || '').toLowerCase() === raw);
+      if (hit) return { order: ord, matchedSn: hit.serial_number };
+    }
+    for (const ord of (TRACKING.orders || [])){
+      if (String(ord.tracking_code || '').toLowerCase().includes(raw) || String(ord.client_name || '').toLowerCase().includes(raw)) return { order: ord, matchedSn: null };
+      const hit = (ord.items || []).find(it => String(it.serial_number || '').toLowerCase().includes(raw) || String(it.item_name || '').toLowerCase().includes(raw));
+      if (hit) return { order: ord, matchedSn: hit.serial_number };
+    }
+    return null;
+  }
+
+  /* ---- Halaman Pelanggan: Lacak Status Order & Verifikasi Sertifikat (#/tracking) ---- */
+  function trackingPublicView(paramCode){
+    if (paramCode && paramCode !== trkState.query) trkState.query = decodeURIComponent(paramCode);
+    const activeCode = trkState.query || ((TRACKING.orders && TRACKING.orders[0]) ? TRACKING.orders[0].tracking_code : '');
+    const found = findOrderByQuery(activeCode);
+    const ord = found ? found.order : null;
+    const matchedSn = found ? found.matchedSn : null;
+    const demoChips = (TRACKING.orders || []).slice(0, 4).map(o => `<button type="button" class="trk-chip" data-act="trk-pick" data-code="${esc(o.tracking_code)}">${esc(o.tracking_code)} (${esc(o.division.replace(/\s*MCS.*/, ''))})</button>`).join('')
+      + `<button type="button" class="trk-chip" data-act="trk-pick" data-code="SN-MTR-8821">Contoh SN: SN-MTR-8821</button>`;
+
+    let detailHtml = `<div class="trk-card"><p class="hint">Kode Tracking atau Nomor Seri <b>"${esc(activeCode)}"</b> tidak ditemukan. Pastikan ejaan kode sesuai tanda terima atau klik salah satu contoh kode di atas.</p></div>`;
+    if (ord){
+      const steps = ord.steps || [];
+      const doneCount = steps.filter(s => s.status === 'DONE').length;
+      const pct = steps.length ? Math.round((doneCount / steps.length) * 100) : 0;
+      const isDone = ord.status === 'COMPLETED' || ord.status === 'READY_TO_SHIP' || (steps.length && doneCount === steps.length);
+      const validOk = !ord.valid_until || ord.valid_until >= today();
+
+      const timelineHtml = steps.map((st, idx) => {
+        const pubStatus = st.status === 'REWORK' ? 'ACTIVE' : st.status;
+        const cls = pubStatus === 'DONE' ? 'done' : pubStatus === 'ACTIVE' ? 'active' : '';
+        const u = userById(st.assigned_user_id);
+        const photosHtml = (st.photos || []).length ? `<div class="trk-sphotos">${st.photos.map(ph => `
+          <div class="trk-pthumb" data-act="trk-zoom" data-src="${esc(ph.s)}" title="Klik untuk memperbesar (${ph.compKb || 160} KB)">
+            <img src="${esc(ph.s)}" alt="Bukti tahap ${st.step_no}">
+            <span>${ph.compKb ? ph.compKb + ' KB' : 'Bukti Foto'}</span>
+          </div>`).join('')}</div>` : '';
+        return `
+          <div class="trk-step ${cls}">
+            <div class="trk-dot">${pubStatus === 'DONE' ? ic('check', 16, 2.6) : (idx + 1)}</div>
+            <div class="trk-sbody">
+              <div class="trk-shead">
+                <div>
+                  <b>Tahap ${idx + 1}: ${esc(st.title)}</b>
+                  ${st.is_qc_gate ? `<span class="trk-badge qc" style="margin-left:6px">${ic('shield', 13)} Gate ${st.qc_type === 'incoming' ? 'Incoming QC' : 'Outgoing QC'}</span>` : ''}
+                </div>
+                <span class="trk-badge st-${pubStatus}">${pubStatus === 'DONE' ? 'Selesai' : pubStatus === 'ACTIVE' ? 'Sedang Dikerjakan' : 'Menunggu Giliran'}</span>
+              </div>
+              <p style="font-size:13.5px;color:var(--muted)">${esc(st.instruction)}</p>
+              ${st.worker_note && pubStatus === 'DONE' ? `<div style="font-size:13.5px;background:var(--surface);padding:8px 11px;border-radius:10px;border:1px solid var(--line)"><b>Catatan Petugas:</b> ${esc(st.worker_note)}</div>` : ''}
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)">
+                <span>Penanggung Jawab: <b>${esc(u.name)}</b></span>
+                ${st.completed_at ? `<span>Selesai: <b>${esc(st.completed_at)}</b></span>` : ''}
+              </div>
+              ${photosHtml}
+            </div>
+          </div>`;
+      }).join('');
+
+      const itemsHtml = (ord.items || []).map((it, idx) => `
+        <tr style="${matchedSn && it.serial_number === matchedSn ? 'background:var(--accent-soft)' : ''}">
+          <td>${idx + 1}</td>
+          <td><b>${esc(it.item_name)}</b></td>
+          <td>${esc(it.brand_model || '-')}</td>
+          <td><code>${esc(it.serial_number)}</code> ${matchedSn && it.serial_number === matchedSn ? '<span class="trk-badge st-ACTIVE">SN Dicari</span>' : ''}</td>
+        </tr>`).join('');
+
+      detailHtml = `
+        <div class="trk-grid">
+          <div class="trk-card">
+            <div class="trk-head">
+              <div>
+                <small style="color:var(--muted);font-weight:600">${esc(ord.division)} · ${esc(ord.category)}</small>
+                <div class="trk-code">${esc(ord.tracking_code)}</div>
+                <div style="font-size:14px;color:var(--muted)">Klien: <b>${esc(ord.client_name)}</b> (PIC: ${esc(ord.pic_name || '-')})</div>
+              </div>
+              <div style="text-align:right">
+                <span class="trk-badge st-${esc(ord.status)}">${esc(STATUS_LABEL[ord.status] || ord.status)}</span>
+                <div style="font-size:12.5px;color:var(--muted);margin-top:4px">Progres: <b>${doneCount}/${steps.length} Tahap (${pct}%)</b></div>
+              </div>
+            </div>
+
+            <h3 style="font-size:16.5px;margin-top:4px">Live Progress Timeline Pengerjaan</h3>
+            <div class="trk-timeline">${timelineHtml}</div>
+
+            <h3 style="font-size:16.5px;margin-top:8px">Daftar Unit &amp; Nomor Seri (Serial Number)</h3>
+            <div style="overflow-x:auto;border:1px solid var(--line);border-radius:14px">
+              <table class="trk-sn-tbl">
+                <thead><tr><th>No</th><th>Nama Alat / Barang</th><th>Merek &amp; Tipe</th><th>Nomor Seri (SN)</th></tr></thead>
+                <tbody>${itemsHtml}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:16px">
+            <div class="trk-card">
+              <h3 style="font-size:17px;display:flex;align-items:center;gap:8px">${ic('truck', 20)} Informasi Pengiriman &amp; Dokumen</h3>
+              <div class="trk-meta">
+                <div><small>Ekspedisi / Pengiriman</small><b>${esc(ord.courier || '-')}</b></div>
+                <div><small>Nomor Resi</small><b>${esc(ord.receipt_no || 'Belum Tersedia')}</b></div>
+                <div><small>No. Sertifikat / BAST</small><b>${esc(ord.cert_no || '-')}</b></div>
+                <div><small>Masa Berlaku s/d</small><b>${esc(ord.valid_until || '-')}</b></div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+                ${isDone
+                  ? `<button type="button" class="btn primary sm" data-act="trk-cert" data-id="${esc(ord.id)}">${ic('download', 18)} Unduh Sertifikat / BAST (PDF)</button>`
+                  : `<button type="button" class="btn ghost sm" disabled title="Tersedia setelah seluruh tahapan & Final QC selesai">${ic('lock', 16)} Sertifikat Tersedia Saat Order Selesai</button>`}
+                <button type="button" class="btn ghost sm" data-act="trk-qr-print" data-id="${esc(ord.id)}">${ic('image', 18)} Lihat / Cetak Label QR</button>
+              </div>
+            </div>
+
+            <div class="trk-card">
+              <h3 style="font-size:17px;display:flex;align-items:center;gap:8px">${ic('shield', 20)} Verifikasi Keaslian Sertifikat &amp; QC</h3>
+              <div style="display:flex;gap:14px;align-items:center;background:var(--surface-2);padding:12px;border-radius:14px;border:1px solid var(--line)">
+                <div class="qr-box" style="padding:6px">${qrSvg(ord.tracking_code, 78)}</div>
+                <div style="display:grid;gap:4px;font-size:13.5px">
+                  <div>Status Dokumen: <span class="trk-badge ${validOk ? 'st-DONE' : 'st-REWORK'}">${validOk ? 'VALID & TERVERIFIKASI' : 'KEDALUWARSA (PERLU RE-KALIBRASI)'}</span></div>
+                  <div>No. Sertifikat: <b>${esc(ord.cert_no || '-')}</b></div>
+                  <div>Jatuh Tempo Re-Kalibrasi: <b>${esc(ord.valid_until || '-')}</b></div>
+                </div>
+              </div>
+              <a class="btn ghost sm" href="${wa('Halo ' + brand() + ', saya ingin menanyakan progres order dengan Kode Tracking ' + ord.tracking_code + ' (' + ord.client_name + ').')}" target="_blank" rel="noopener">${ic('chat', 18)} Hubungi Admin tentang Order Ini</a>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <section class="page" style="justify-content:flex-start">
+        <div class="trk-wrap">
+          <div class="trk-hero">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+              <div>
+                <h2>Lacak Status Kalibrasi, Pengadaan &amp; Sertifikat</h2>
+                <p>Masukkan <b>Kode Tracking Perusahaan</b> atau <b>Nomor Seri Alat (Serial Number)</b> untuk memantau progres tahapan pengerjaan, foto bukti lolos QC, nomor resi, dan mengunduh sertifikat digital.</p>
+              </div>
+              <a class="btn ghost on-deep sm" href="#/admin">${ic('lock', 16)} Portal Pekerja / QC / Admin</a>
+            </div>
+            <form class="trk-search" id="trk-search-form">
+              <input type="text" id="trk-q" name="q" value="${esc(activeCode)}" placeholder="Ketik Kode Tracking (mis. MCS-CAL-2026-001) atau Nomor Seri (mis. SN-MTR-8821)..." autocomplete="off">
+              <button type="submit" class="btn primary">${ic('search', 18)} Lacak Sekarang</button>
+              <button type="button" class="btn ghost on-deep" data-act="trk-scan">${ic('image', 18)} Scan QR Alat</button>
+            </form>
+            <div class="trk-demos">
+              <span>Coba kode demo:</span>
+              ${demoChips}
+            </div>
+          </div>
+          ${detailHtml}
+        </div>
+      </section>`;
+  }
+
+  /* ---- Portal Internal Multi-Role: Super Admin, Pekerja (Teknisi/Gudang), & Petugas QC ---- */
+  function newOrderDraft(existing){
+    if (existing) return JSON.parse(JSON.stringify(existing));
+    const div = DIV_LIST[0][0];
+    const prefix = DIV_LIST[0][2];
+    const seq = String((TRACKING.orders || []).length + 1).padStart(3, '0');
+    const tpl = (TRACKING.templates && TRACKING.templates[div]) || [];
+    const exp = new Date(); exp.setFullYear(exp.getFullYear() + 1);
+    return {
+      id: 'ord_' + Date.now().toString(36),
+      tracking_code: `${prefix}-2026-${seq}`,
+      division: div,
+      category: 'Kalibrasi Instrumen & Alat Ukur',
+      client_name: '',
+      pic_name: '',
+      pic_wa: '6285974008882',
+      status: 'IN_PROGRESS',
+      created_at: nowStamp(),
+      courier: 'Armada MCS / Ekspedisi',
+      receipt_no: '-',
+      cert_no: `CERT/${prefix}/2026/${seq}`,
+      cert_url: '',
+      valid_until: exp.toISOString().slice(0, 10),
+      items: [{ id: 'it_' + Date.now().toString(36), item_name: '', brand_model: '', serial_number: '' }],
+      steps: tpl.map((t, k) => ({
+        id: 'st_' + Date.now().toString(36) + '_' + k,
+        step_no: k + 1,
+        title: t.title,
+        instruction: t.instruction,
+        assigned_user_id: t.assigned_user_id,
+        is_qc_gate: !!t.is_qc_gate,
+        qc_type: t.qc_type || '',
+        status: k === 0 ? 'ACTIVE' : 'LOCKED',
+        checked: false,
+        worker_note: '',
+        qc_rework_reason: '',
+        completed_at: '',
+        photos: []
+      }))
+    };
+  }
+
+  function adminTrackingPanel(){
+    const curUser = userById(trkState.roleUserId);
+    const orders = TRACKING.orders || [];
+    const roleButtons = (TRACKING.users || []).map(u => `
+      <button type="button" class="role-btn ${u.id === curUser.id ? 'on' : ''}" data-act="trk-role" data-uid="${esc(u.id)}">
+        ${u.role === 'ADMIN' ? '👑 ' : u.role === 'QC' ? '🛡️ ' : '🔧 '}${esc(u.name)}
+      </button>`).join('');
+
+    const roleHeader = `
+      <div class="role-bar">
+        <div>
+          <div style="font-size:12px;opacity:.8;text-transform:uppercase;letter-spacing:.05em">Mode Portal Operasional Multi-Role (Simulasi Demo &amp; Produksi)</div>
+          <div style="font-size:17px;font-weight:800">Masuk sebagai: ${esc(curUser.name)} — <span style="color:var(--accent-2)">${curUser.role === 'ADMIN' ? 'Super Admin / CS' : curUser.role === 'QC' ? 'Petugas Gate QC' : 'Portal Mobile Pekerja'}</span></div>
+        </div>
+        <div class="role-pills" role="group" aria-label="Pilih Peran Staf">${roleButtons}</div>
+      </div>`;
+
+    if (curUser.role === 'WORKER') return roleHeader + workerPortalView(curUser);
+    if (curUser.role === 'QC') return roleHeader + qcPortalView(curUser);
+
+    // SUPER ADMIN VIEW
+    const inProg = orders.filter(o => o.status === 'IN_PROGRESS').length;
+    const waitQc = orders.filter(o => o.status === 'WAITING_QC' || (o.steps || []).some(s => s.is_qc_gate && s.status === 'ACTIVE')).length;
+    const doneOrd = orders.filter(o => o.status === 'READY_TO_SHIP' || o.status === 'COMPLETED').length;
+
+    const subTabs = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button type="button" class="btn ${trkState.adminSub === 'list' ? 'primary' : 'ghost'} sm" data-act="trk-sub" data-v="list">${ic('box', 17)} Dashboard &amp; Daftar Order (${orders.length})</button>
+        <button type="button" class="btn ${trkState.adminSub === 'form' ? 'primary' : 'ghost'} sm" data-act="trk-new-order">${ic('plus', 17)} Buat Order Baru &amp; Susun Step</button>
+        <button type="button" class="btn ${trkState.adminSub === 'staff' ? 'primary' : 'ghost'} sm" data-act="trk-sub" data-v="staff">${ic('users', 17)} Akun Pekerja &amp; Master Template</button>
+      </div>`;
+
+    if (trkState.adminSub === 'form'){
+      if (!trkState.orderDraft) trkState.orderDraft = newOrderDraft();
+      const d = trkState.orderDraft;
+      const itemRows = (d.items || []).map((it, idx) => `
+        <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr auto;gap:8px;align-items:end">
+          <label class="field">Nama Alat / Barang #${idx + 1}<input data-trk-item="${idx}" data-k="item_name" value="${esc(it.item_name)}" placeholder="Contoh: Digital Multimeter"></label>
+          <label class="field">Merek / Tipe<input data-trk-item="${idx}" data-k="brand_model" value="${esc(it.brand_model)}" placeholder="Fluke 87V"></label>
+          <label class="field">Nomor Seri (SN)<input data-trk-item="${idx}" data-k="serial_number" value="${esc(it.serial_number)}" placeholder="SN-MTR-8821"></label>
+          <button type="button" class="btn ghost sm" data-act="trk-del-item" data-i="${idx}" title="Hapus unit">${ic('trash', 16)}</button>
+        </div>`).join('');
+
+      const stepRows = (d.steps || []).map((st, idx) => `
+        <div class="sb-item">
+          <div class="sb-top">
+            <b>Step #${idx + 1} — <span class="trk-badge st-${esc(st.status)}">${esc(STEP_LABEL[st.status] || st.status)}</span></b>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn ghost sm" data-act="trk-step-move" data-i="${idx}" data-d="-1" ${idx === 0 ? 'disabled' : ''}>↑</button>
+              <button type="button" class="btn ghost sm" data-act="trk-step-move" data-i="${idx}" data-d="1" ${idx === d.steps.length - 1 ? 'disabled' : ''}>↓</button>
+              <button type="button" class="btn ghost sm" data-act="trk-del-step" data-i="${idx}">${ic('trash', 16)} Hapus</button>
+            </div>
+          </div>
+          <div class="three">
+            <label class="field">Judul Tahapan<input data-trk-step="${idx}" data-k="title" value="${esc(st.title)}" placeholder="Contoh: Kalibrasi Lab"></label>
+            <label class="field">Ditugaskan ke Pekerja / QC
+              <select data-trk-step="${idx}" data-k="assigned_user_id">
+                ${(TRACKING.users || []).map(u => `<option value="${esc(u.id)}" ${st.assigned_user_id === u.id ? 'selected' : ''}>${esc(u.name)} (${esc(u.role)})</option>`).join('')}
+              </select>
+            </label>
+            <label class="field">Gerbang Quality Control (Gate QC)
+              <select data-trk-step="${idx}" data-k="qc_type">
+                <option value="" ${!st.is_qc_gate ? 'selected' : ''}>Bukan Gate QC (Tahap Pekerja)</option>
+                <option value="incoming" ${st.is_qc_gate && st.qc_type === 'incoming' ? 'selected' : ''}>🛡️ Gate Incoming QC (Saat Masuk)</option>
+                <option value="outgoing" ${st.is_qc_gate && st.qc_type === 'outgoing' ? 'selected' : ''}>🛡️ Gate Outgoing QC (Sebelum Kirim)</option>
+              </select>
+            </label>
+          </div>
+          <label class="field">Instruksi Kerja Detail (Muncul sebagai Checkbox di HP Pekerja)<input data-trk-step="${idx}" data-k="instruction" value="${esc(st.instruction)}" placeholder="Tulis instruksi SOP untuk tahapan ini..."></label>
+        </div>`).join('');
+
+      return roleHeader + subTabs + `
+        <form id="trk-order-form" class="trk-card" autocomplete="off">
+          <div class="trk-head">
+            <div>
+              <h3>${trkState.editOrderId ? 'Edit Order &amp; Tahapan Kerja' : 'Registrasi Order Baru &amp; Penerbitan Kode Tracking'}</h3>
+              <p class="hint">Pilih salah satu dari 4 divisi MCS, daftarkan multi-nomor seri unit, dan susun estafet pekerjaan antar-staf.</p>
+            </div>
+            <span class="trk-code">${esc(d.tracking_code)}</span>
+          </div>
+
+          <div class="three">
+            <label class="field">Divisi Layanan MCS
+              <select name="division" data-trk-field="division">
+                ${DIV_LIST.map(dv => `<option value="${esc(dv[0])}" ${d.division === dv[0] ? 'selected' : ''}>${esc(dv[0])}</option>`).join('')}
+              </select>
+            </label>
+            <label class="field">Kategori / Ruang Lingkup Spesifik<input name="category" data-trk-field="category" value="${esc(d.category)}" placeholder="Kalibrasi Massa / Pengadaan Chiller / K3"></label>
+            <label class="field">Kode Tracking Perusahaan (Otomatis/Kustom)<input name="tracking_code" data-trk-field="tracking_code" value="${esc(d.tracking_code)}" required></label>
+          </div>
+
+          <div class="three">
+            <label class="field">Nama Perusahaan Pelanggan<input name="client_name" data-trk-field="client_name" value="${esc(d.client_name)}" placeholder="PT. Contoh Industri" required></label>
+            <label class="field">Nama PIC Pelanggan<input name="pic_name" data-trk-field="pic_name" value="${esc(d.pic_name)}" placeholder="Bpk. Ahmad"></label>
+            <label class="field">Nomor WhatsApp PIC (Notifikasi Otomatis)<input name="pic_wa" data-trk-field="pic_wa" value="${esc(d.pic_wa)}" placeholder="628123456789"></label>
+          </div>
+
+          <h4 class="sec">Daftar Unit &amp; Nomor Seri (Multi Serial Number dalam 1 Kode Tracking)</h4>
+          <div style="display:grid;gap:10px">${itemRows}</div>
+          <div><button type="button" class="btn ghost sm" data-act="trk-add-item">${ic('plus', 16)} Tambah Baris Unit &amp; Nomor Seri (SN)</button></div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px solid var(--line)">
+            <h4 class="sec" style="border:0;padding:0;margin:0">Dynamic Step Builder (Estafet Tahapan Kerja &amp; Gate QC)</h4>
+            <div style="display:flex;gap:8px">
+              <button type="button" class="btn ghost sm" data-act="trk-load-tpl">${ic('refresh', 16)} Muat Template Default Divisi</button>
+              <button type="button" class="btn ghost sm" data-act="trk-add-step">${ic('plus', 16)} Tambah Tahapan (Step)</button>
+            </div>
+          </div>
+          <div class="step-builder">${stepRows}</div>
+
+          <h4 class="sec">Pengiriman, Nomor Resi &amp; Sertifikat Digital (PDF / BAST)</h4>
+          <div class="three">
+            <label class="field">Nama Kurir / Ekspedisi<input data-trk-field="courier" value="${esc(d.courier)}" placeholder="JNE Trucking / Armada MCS"></label>
+            <label class="field">Nomor Resi Pengiriman<input data-trk-field="receipt_no" value="${esc(d.receipt_no)}" placeholder="Isi nomor resi jika sudah dikirim"></label>
+            <label class="field">Nomor Sertifikat / BAST<input data-trk-field="cert_no" value="${esc(d.cert_no)}" placeholder="CERT/MCS-CAL/2026/105"></label>
+          </div>
+          <div class="two">
+            <label class="field">Tanggal Jatuh Tempo Re-Kalibrasi Berikutnya (Pengingat H-30)<input type="date" data-trk-field="valid_until" value="${esc(d.valid_until)}"></label>
+            <label class="field">Unggah File PDF Sertifikat / BAST (Opsional — atau gunakan Generator PDF MCS)
+              <input type="file" accept="application/pdf" data-fx="trk-cert-pdf">
+              ${d.cert_url ? `<small style="color:#047857;font-weight:700">✓ File PDF tersimpan (${Math.round(d.cert_url.length / 1024)} KB)</small>` : `<small class="hint">Jika dikosongkan, sistem otomatis menyediakan Sertifikat / BAST Digital resmi berlogo MCS.</small>`}
+            </label>
+          </div>
+
+          <div class="a-save">
+            <button type="submit" class="btn primary">${ic('check', 18)} Simpan Order &amp; Aktifkan Tracking</button>
+            <button type="button" class="btn ghost" data-act="trk-sub" data-v="list">Batal</button>
+          </div>
+        </form>`;
+    }
+
+    if (trkState.adminSub === 'staff'){
+      const userRows = (TRACKING.users || []).map((u, idx) => `
+        <div class="bitem">
+          <div class="bitem-info">
+            <b>${esc(u.name)} <span class="trk-badge ${u.role === 'ADMIN' ? 'st-ACTIVE' : u.role === 'QC' ? 'qc' : 'st-IN_PROGRESS'}">${esc(u.role)}</span></b>
+            <small>Email: ${esc(u.email)} · Divisi: ${esc(u.division)} · WA: ${esc(u.wa)}</small>
+          </div>
+          <div class="bitem-act">
+            <button type="button" class="btn ghost sm" data-act="trk-role" data-uid="${esc(u.id)}">Buka Portal Akun Ini</button>
+          </div>
+        </div>`).join('');
+
+      return roleHeader + subTabs + `
+        <div class="trk-card">
+          <div class="trk-head">
+            <div>
+              <h3>Manajemen Akun Staf, Pekerja &amp; Petugas QC</h3>
+              <p class="hint">Klik "Buka Portal Akun Ini" atau gunakan tombol di bar atas untuk mensimulasikan tampilan antrean kerja masing-masing staf.</p>
+            </div>
+            <button type="button" class="btn ghost sm" data-act="trk-reset-demo">${ic('refresh', 16)} Reset Data Simulasi Demo Awal</button>
+          </div>
+          <div class="blist">${userRows}</div>
+          <form id="trk-add-user-form" style="padding-top:12px;border-top:1px solid var(--line);display:grid;gap:10px">
+            <h4>Tambah Akun Pekerja / Petugas QC Baru</h4>
+            <div class="three">
+              <label class="field">Nama Lengkap &amp; Jabatan<input name="name" required placeholder="Contoh: Dedi Kurniawan (Teknisi Suhu)"></label>
+              <label class="field">Peran (Role)
+                <select name="role">
+                  <option value="WORKER">Pekerja (Teknisi Lab / Staf Gudang)</option>
+                  <option value="QC">Petugas Quality Control (Gate QC)</option>
+                  <option value="ADMIN">Super Admin / Admin CS</option>
+                </select>
+              </label>
+              <label class="field">Divisi Spesialisasi
+                <select name="division">
+                  ${DIV_LIST.map(d => `<option value="${esc(d[0])}">${esc(d[0])}</option>`).join('')}
+                  <option value="Quality Control (Gate QC)">Quality Control (Gate QC)</option>
+                </select>
+              </label>
+            </div>
+            <div class="two">
+              <label class="field">Email Login<input type="email" name="email" required placeholder="dedi@mcs.co.id"></label>
+              <label class="field">Nomor WhatsApp (Penerima Notifikasi Tugas)<input name="wa" value="6285974008882" required></label>
+            </div>
+            <div><button type="submit" class="btn primary sm">${ic('plus', 16)} Tambah Akun Staf</button></div>
+          </form>
+        </div>`;
+    }
+
+    // DEFAULT ADMIN SUB: MONITORING & ORDER LIST
+    const qcAlerts = [];
+    const recalAlerts = [];
+    orders.forEach(o => {
+      const qcStep = (o.steps || []).find(s => s.is_qc_gate && s.status === 'ACTIVE');
+      if (qcStep) qcAlerts.push({ order: o, step: qcStep });
+      if (o.valid_until){
+        const diffDays = Math.ceil((new Date(o.valid_until) - new Date()) / 86400000);
+        if (diffDays <= 45) recalAlerts.push({ order: o, days: diffDays });
+      }
+    });
+
+    const orderCards = orders.map(o => {
+      const st = o.steps || [];
+      const done = st.filter(s => s.status === 'DONE').length;
+      const curStep = st.find(s => s.status === 'ACTIVE' || s.status === 'REWORK');
+      const snList = (o.items || []).map(i => i.serial_number).join(', ');
+      const waClientUrl = 'https://wa.me/' + waDigits(o.pic_wa || WA_DEFAULT) + '?text=' + encodeURIComponent(
+        `Halo ${o.pic_name || o.client_name}, terima kasih telah mempercayakan layanan ${o.division} kepada *${brand()}*.\n\n` +
+        `📌 *Kode Tracking:* ${o.tracking_code}\n` +
+        `🔧 *Unit & SN:* ${snList}\n` +
+        `📊 *Status Saat Ini:* ${STATUS_LABEL[o.status] || o.status} (${done}/${st.length} Tahap)\n` +
+        (o.receipt_no && o.receipt_no !== '-' ? `🚚 *Kurir & Resi:* ${o.courier} (${o.receipt_no})\n` : '') +
+        `\nPantau progres, foto bukti QC, dan unduh sertifikat secara live di:\n${location.origin + location.pathname}#/tracking/${o.tracking_code}`
+      );
+      return `
+        <div class="bitem" style="align-items:flex-start">
+          <div class="bitem-info" style="flex:1;min-width:260px;gap:5px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span class="trk-code" style="font-size:16.5px">${esc(o.tracking_code)}</span>
+              <span class="trk-badge st-${esc(o.status)}">${esc(STATUS_LABEL[o.status] || o.status)}</span>
+              <small style="color:var(--muted);font-weight:600">${esc(o.division)}</small>
+            </div>
+            <div><b>${esc(o.client_name)}</b> · PIC: ${esc(o.pic_name || '-')} (${esc(o.pic_wa || '-')})</div>
+            <small><b>Unit &amp; Nomor Seri (${(o.items || []).length}):</b> ${esc(snList || '-')}</small>
+            <small><b>Posisi Tahapan (${done}/${st.length}):</b> ${curStep ? `Step #${curStep.step_no} — ${esc(curStep.title)} (${esc(userById(curStep.assigned_user_id).name)})` : '✓ Seluruh Tahapan & Final QC Selesai'}</small>
+          </div>
+          <div class="bitem-act" style="flex-wrap:wrap">
+            <a class="btn ghost sm" href="#/tracking/${encodeURIComponent(o.tracking_code)}">${ic('search', 15)} Lihat Tracking</a>
+            <button type="button" class="btn ghost sm" data-act="trk-edit-order" data-id="${esc(o.id)}">${ic('edit', 15)} Edit / Resi</button>
+            <button type="button" class="btn ghost sm" data-act="trk-qr-print" data-id="${esc(o.id)}">${ic('image', 15)} Stiker QR</button>
+            <button type="button" class="btn ghost sm" data-act="trk-cert" data-id="${esc(o.id)}">${ic('filecheck', 15)} Sertifikat</button>
+            <a class="btn primary sm" href="${waClientUrl}" target="_blank" rel="noopener">${ic('chat', 15)} Kirim WA Klien</a>
+          </div>
+        </div>`;
+    }).join('');
+
+    return roleHeader + subTabs + `
+      <div class="kpi-row">
+        <div class="kpi-card"><b>${orders.length}</b><span>Total Order Terdaftar</span></div>
+        <div class="kpi-card"><b>${inProg}</b><span>Order Sedang Dikerjakan</span></div>
+        <div class="kpi-card"><b style="color:#d97706">${waitQc}</b><span>Antrean Gate QC (Incoming/Outgoing)</span></div>
+        <div class="kpi-card"><b style="color:#059669">${doneOrd}</b><span>Lolos QC &amp; Siap Kirim / Selesai</span></div>
+      </div>
+
+      ${qcAlerts.length ? `
+        <div class="trk-card" style="margin-bottom:14px;border-color:#f59e0b">
+          <h4 style="margin:0;color:#b45309;display:flex;align-items:center;gap:8px">${ic('shield', 18)} Peringatan Antrean Gate QC (${qcAlerts.length} Order Menunggu Verifikasi QC)</h4>
+          <div class="blist">
+            ${qcAlerts.map(a => `
+              <div class="bitem">
+                <div class="bitem-info">
+                  <b>${esc(a.order.tracking_code)} — ${esc(a.order.client_name)}</b>
+                  <small>Menunggu: <b>Step #${a.step.step_no} (${esc(a.step.title)})</b> oleh ${esc(userById(a.step.assigned_user_id).name)}</small>
+                </div>
+                <button type="button" class="btn primary sm" data-act="trk-role" data-uid="${esc(a.step.assigned_user_id)}">${ic('shield', 15)} Buka Panel Gate QC &amp; Periksa</button>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
+
+      ${recalAlerts.length ? `
+        <div class="trk-card" style="margin-bottom:14px">
+          <h4 style="margin:0;display:flex;align-items:center;gap:8px">${ic('bell', 18)} Pengingat Otomatis Re-Kalibrasi / Masa Berlaku K3 (H-30)</h4>
+          <div class="blist">
+            ${recalAlerts.map(r => {
+              const reminderWa = 'https://wa.me/' + waDigits(r.order.pic_wa || WA_DEFAULT) + '?text=' + encodeURIComponent(
+                `Halo ${r.order.pic_name || r.order.client_name}, pengingat ramah dari *${brand()}*: masa berlaku sertifikat untuk order *${r.order.tracking_code}* (${(r.order.items || []).map(i => i.serial_number).join(', ')}) akan jatuh tempo pada *${r.order.valid_until}*. Hubungi kami untuk penjadwalan re-kalibrasi/inspeksi berkala.`
+              );
+              return `
+                <div class="bitem">
+                  <div class="bitem-info">
+                    <b>${esc(r.order.client_name)} (${esc(r.order.tracking_code)})</b>
+                    <small>Jatuh Tempo: <b>${esc(r.order.valid_until)}</b> (${r.days <= 0 ? 'Sudah jatuh tempo' : r.days + ' hari lagi'})</small>
+                  </div>
+                  <a class="btn ghost sm" href="${reminderWa}" target="_blank" rel="noopener">${ic('chat', 15)} Kirim Pengingat WA</a>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
+
+      <div class="trk-card">
+        <div class="trk-head">
+          <div>
+            <h3>Daftar Order Aktif &amp; Riwayat Tracking</h3>
+            <p class="hint">Kelola seluruh order lintas 4 divisi (Calibration, Procurement, Safety K3, dan IT Service).</p>
+          </div>
+          <button type="button" class="btn primary sm" data-act="trk-new-order">${ic('plus', 16)} Buat Order Baru</button>
+        </div>
+        <div class="blist">${orderCards || '<p class="hint">Belum ada order terdaftar.</p>'}</div>
+      </div>`;
+  }
+
+  /* ---- Portal Kerja Mobile: Pekerja (Teknisi Lab / Staf Gudang) ---- */
+  function workerPortalView(worker){
+    const activeTasks = [];
+    const doneTasks = [];
+    (TRACKING.orders || []).forEach(ord => {
+      (ord.steps || []).forEach((st, idx) => {
+        if (st.assigned_user_id !== worker.id) return;
+        if (st.status === 'ACTIVE' || st.status === 'REWORK') activeTasks.push({ order: ord, step: st, idx });
+        else if (st.status === 'DONE') doneTasks.push({ order: ord, step: st, idx });
+      });
+    });
+
+    const cards = activeTasks.map(({ order, step, idx }) => {
+      const snList = (order.items || []).map(i => `${i.item_name} (${i.serial_number})`).join(' · ');
+      const photosHtml = (step.photos || []).map((ph, pi) => `
+        <div class="trk-pthumb" title="Asli ${ph.origKb} KB -> Kompresi ${ph.compKb} KB">
+          <img src="${esc(ph.s)}" alt="">
+          <span>${ph.compKb} KB (-${Math.max(1, Math.round((1 - ph.compKb / Math.max(1, ph.origKb)) * 100))}%)</span>
+        </div>`).join('');
+      return `
+        <div class="trk-card" style="border:2px solid ${step.status === 'REWORK' ? '#e63946' : 'var(--accent)'}">
+          <div class="trk-head">
+            <div>
+              <small style="color:var(--muted);font-weight:700">${esc(order.division)} · ${esc(order.client_name)}</small>
+              <div class="trk-code">${esc(order.tracking_code)} — Step #${step.step_no}: ${esc(step.title)}</div>
+              <small><b>Unit &amp; SN:</b> ${esc(snList)}</small>
+            </div>
+            <span class="trk-badge st-${esc(step.status)}">${step.status === 'REWORK' ? '⚠️ REVISI DARI QC (REWORK)' : 'GILIRAN ANDA (AKTIF)'}</span>
+          </div>
+
+          ${step.status === 'REWORK' && step.qc_rework_reason ? `
+            <div class="rework-alert">
+              <b>Catatan Revisi Internal dari Petugas QC:</b><br>${esc(step.qc_rework_reason)}
+              <div style="font-size:11.5px;opacity:.8;margin-top:3px">*Catatan ini bersifat internal dan tidak ditampilkan di halaman tracking pelanggan.</div>
+            </div>` : ''}
+
+          <div style="background:var(--surface-2);padding:12px 14px;border-radius:12px;border:1px solid var(--line)">
+            <b>Instruksi Kerja Admin:</b>
+            <p style="margin:4px 0 8px;font-size:14px">${esc(step.instruction)}</p>
+            <label class="cbx">
+              <input type="checkbox" data-act="trk-w-check" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" ${step.checked ? 'checked' : ''}>
+              <span>Saya telah melaksanakan seluruh instruksi kerja pada tahapan ini sesuai SOP</span>
+            </label>
+          </div>
+
+          <label class="field">Catatan Lapangan / Hasil Pengerjaan
+            <textarea rows="2" data-trk-wnote="${esc(order.id)}|${esc(step.id)}" placeholder="Tulis hasil pengukuran, kondisi unit, atau catatan pengerjaan...">${esc(step.worker_note || '')}</textarea>
+          </label>
+
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+              <b style="font-size:14px">Dokumentasi Foto Bukti Kerja (Auto-Kompresi 1280px · 150–300 KB)</b>
+              <label class="btn ghost sm" style="cursor:pointer">
+                ${ic('upload', 16)} Ambil / Unggah Foto Bukti
+                <input type="file" accept="image/*" capture="environment" data-fx="trk-step-photo" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" hidden>
+              </label>
+            </div>
+            <div class="trk-sphotos">${photosHtml || '<span class="hint">Belum ada foto bukti pada tahapan ini. Unggah minimal 1 foto bukti kerja.</span>'}</div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line)">
+            <small class="hint">Setelah diselesaikan, sistem otomatis membuka kunci <b>Step #${step.step_no + 1}</b>.</small>
+            <button type="button" class="btn primary" data-act="trk-complete-step" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('check', 18)} Selesaikan Step &amp; Estafetkan</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    const historyRows = doneTasks.map(({ order, step }) => `
+      <div class="bitem">
+        <div class="bitem-info">
+          <b>${esc(order.tracking_code)} — Step #${step.step_no}: ${esc(step.title)}</b>
+          <small>${esc(order.client_name)} · Selesai: ${esc(step.completed_at)} · ${(step.photos || []).length} foto terkompresi</small>
+        </div>
+        <a class="btn ghost sm" href="#/tracking/${encodeURIComponent(order.tracking_code)}">Lihat di Tracking</a>
+      </div>`).join('');
+
+    return `
+      <div style="display:grid;gap:14px">
+        <div class="trk-card">
+          <div class="trk-head">
+            <div>
+              <h3>Portal Kerja Mobile — Antrean Tugas Aktif (${activeTasks.length})</h3>
+              <p class="hint">Hanya menampilkan tahapan yang sudah terbuka gilirannya untuk akun <b>${esc(worker.name)}</b>.</p>
+            </div>
+            <button type="button" class="btn ghost sm" data-act="trk-scan">${ic('image', 16)} Scan QR Unit</button>
+          </div>
+          ${cards || '<p class="hint">Tidak ada antrean tugas aktif saat ini. Seluruh tugas Anda telah selesai atau masih menunggu tahapan sebelumnya.</p>'}
+        </div>
+        <div class="trk-card">
+          <h4>Riwayat Tahapan yang Telah Anda Selesaikan (${doneTasks.length})</h4>
+          <div class="blist">${historyRows || '<p class="hint">Belum ada riwayat tugas selesai.</p>'}</div>
+        </div>
+      </div>`;
+  }
+
+  /* ---- Portal Petugas Quality Control (Gate Incoming & Outgoing QC) ---- */
+  function qcPortalView(qcUser){
+    const activeGates = [];
+    (TRACKING.orders || []).forEach(ord => {
+      (ord.steps || []).forEach((st, idx) => {
+        if (st.is_qc_gate && (st.status === 'ACTIVE' || st.status === 'REWORK')) activeGates.push({ order: ord, step: st, idx });
+      });
+    });
+
+    const gateCards = activeGates.map(({ order, step, idx }) => {
+      const prevStep = idx > 0 ? order.steps[idx - 1] : null;
+      const snList = (order.items || []).map(i => `${i.item_name} [${i.serial_number}]`).join(' · ');
+      const photosHtml = (step.photos || []).map(ph => `
+        <div class="trk-pthumb">
+          <img src="${esc(ph.s)}" alt="">
+          <span>${ph.compKb} KB</span>
+        </div>`).join('');
+      return `
+        <div class="trk-card" style="border:2px solid #8b5cf6">
+          <div class="trk-head">
+            <div>
+              <span class="trk-badge qc">${ic('shield', 14)} GATE ${step.qc_type === 'incoming' ? 'INCOMING QC (SAAT MASUK)' : 'OUTGOING QC (SEBELUM KIRIM)'}</span>
+              <div class="trk-code" style="margin-top:4px">${esc(order.tracking_code)} — ${esc(step.title)}</div>
+              <small><b>Klien:</b> ${esc(order.client_name)} · <b>Daftar Unit &amp; SN:</b> ${esc(snList)}</small>
+            </div>
+            <span class="trk-badge st-WAITING_QC">Menunggu Keputusan QC</span>
+          </div>
+
+          ${prevStep ? `
+            <div style="background:var(--surface-2);padding:10px 13px;border-radius:12px;border:1px solid var(--line);font-size:13.5px">
+              <b>Hasil Tahap Sebelumnya (Step #${prevStep.step_no} — ${esc(userById(prevStep.assigned_user_id).name)}):</b><br>
+              <span>${esc(prevStep.worker_note || 'Selesai tanpa catatan tambahan.')}</span>
+            </div>` : ''}
+
+          <label class="cbx">
+            <input type="checkbox" data-act="trk-w-check" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" ${step.checked ? 'checked' : ''}>
+            <span>Saya telah memverifikasi kesesuaian Nomor Seri (SN), kelengkapan fisik, dan standar mutu layanan (${esc(step.instruction)})</span>
+          </label>
+
+          <label class="field">Catatan Pemeriksaan QC / Alasan Rework (Jika Dikembalikan ke Pekerja)
+            <textarea rows="2" data-trk-wnote="${esc(order.id)}|${esc(step.id)}" placeholder="Tulis catatan hasil verifikasi QC atau alasan revisi jika dikembalikan (Rework)...">${esc(step.worker_note || '')}</textarea>
+          </label>
+
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+              <b style="font-size:14px">Foto Bukti Pemeriksaan Gate QC (Auto-Kompresi)</b>
+              <label class="btn ghost sm" style="cursor:pointer">
+                ${ic('upload', 16)} Unggah Foto Bukti QC
+                <input type="file" accept="image/*" capture="environment" data-fx="trk-step-photo" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}" hidden>
+              </label>
+            </div>
+            <div class="trk-sphotos">${photosHtml || '<span class="hint">Unggah foto segel QC / bukti pemeriksaan unit.</span>'}</div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line)">
+            ${prevStep ? `<button type="button" class="btn ghost" style="border-color:#e63946;color:#e63946" data-act="trk-qc-rework" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('close', 18)} REWORK (Kembalikan ke Step #${prevStep.step_no})</button>` : '<span></span>'}
+            <button type="button" class="btn primary" data-act="trk-complete-step" data-oid="${esc(order.id)}" data-sid="${esc(step.id)}">${ic('check', 18)} PASS — Lolos Gate QC &amp; Lanjutkan</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="trk-card">
+        <div class="trk-head">
+          <div>
+            <h3>Panel Gate Quality Control (Incoming &amp; Outgoing QC)</h3>
+            <p class="hint">Periksa kesesuaian Nomor Seri (SN), kelengkapan alat, dan akurasi sertifikat. Pilih <b>PASS</b> untuk meloloskan atau <b>REWORK</b> untuk mengembalikan ke pekerja sebelumnya.</p>
+          </div>
+          <span class="trk-badge qc">${activeGates.length} Antrean Gate QC</span>
+        </div>
+        ${gateCards || '<p class="hint">Seluruh antrean Gate QC telah selesai diperiksa.</p>'}
+      </div>`;
+  }
+
   /* ====== Router ====== */
   const nav = document.getElementById('nav'), ruler = document.getElementById('ruler'), dlinks = document.getElementById('dlinks');
   let lastIdx = 0, curKey = null, introOn = false, trBusy = false, trMid = false;
@@ -1954,12 +3414,12 @@
   };
   const hrefOf = k => '#/' + k;
 
-  const PICON = { '': 'gauge', layanan: 'gear', portofolio: 'image', berita: 'news', keunggulan: 'shield', alur: 'route', testimoni: 'star', kontak: 'chat', admin: 'lock' };
+  const PICON = { '': 'gauge', tracking: 'search', layanan: 'gear', portofolio: 'image', berita: 'news', keunggulan: 'shield', alur: 'route', testimoni: 'star', kontak: 'chat', admin: 'lock' };
   const navIco = (k, s) => `<span class="ni" data-k="${k || 'home'}">${ic(PICON[k], s || 16, 2)}</span>`;
   function chrome(key){
     const idx = PAGES.findIndex(p => p[0] === key);
     const cur = p => p[0] === key ? 'aria-current="page"' : '';
-    nav.innerHTML = PAGES.slice(0, 7).map(p => `<a href="${hrefOf(p[0])}" ${cur(p)}>${navIco(p[0])}${p[1]}</a>`).join('');
+    nav.innerHTML = PAGES.slice(0, 8).map(p => `<a href="${hrefOf(p[0])}" ${cur(p)}>${navIco(p[0])}${p[1]}</a>`).join('');
     dlinks.innerHTML = PAGES.map((p, i) => `<a class="d-link" style="--i:${i}" href="${hrefOf(p[0])}" ${cur(p)}>${navIco(p[0], 22)}${p[1]}</a>`).join('')
       + `<a class="d-link small" style="--i:${PAGES.length}" href="#/admin" ${key === 'admin' ? 'aria-current="page"' : ''}>${navIco('admin', 18)} Admin</a>`;
     ruler.innerHTML = PAGES.map(p => `<a href="${hrefOf(p[0])}" ${cur(p)}><span class="ticks"></span><span class="lab">${navIco(p[0], 14)}${p[1]}</span></a>`).join('');
@@ -1993,7 +3453,7 @@
 
   /* ====== Animasi: pembuka, pindah halaman, masuk admin ====== */
   const REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const TRL = { '': 'Beranda', layanan: 'Layanan', portofolio: 'Portofolio', berita: 'Berita', keunggulan: 'Keunggulan', alur: 'Alur kerja', testimoni: 'Testimoni', kontak: 'Kontak', admin: 'Portal admin' };
+  const TRL = { '': 'Beranda', tracking: 'Lacak Order', layanan: 'Layanan', portofolio: 'Portofolio', berita: 'Berita', keunggulan: 'Keunggulan', alur: 'Alur kerja', testimoni: 'Testimoni', kontak: 'Kontak', admin: 'Portal admin' };
 
   function tachSvg(){
     const cx = 200, cy = 190, r = 150, N = 50, T = 2.2, SW = 0.52, settle = 202 / 270;
